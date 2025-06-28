@@ -1,4 +1,6 @@
-Flask==2.3.2
-Werkzeug==2.3.2
-Pillow==10.2.0
+Flask==3.1.1
+pillow==11.2.1
+python-dateutil==2.9.0.post0
+weasyprint==65.1
+Werkzeug==3.1.3
 

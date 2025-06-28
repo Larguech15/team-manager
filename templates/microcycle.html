@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Microcycle{% endblock %}
+{% block content %}
+<h2 class="text-center mb-4">Microcycle Weekly Plan</h2>
+
+<form method="get" class="mb-3 text-end">
+  <label for="week" class="me-2">Load Saved Week:</label>
+  <select name="week" id="week" onchange="this.form.submit()" class="form-select d-inline-block" style="width: 250px;">
+    {% for key in all_keys %}
+    <option value="{{ key }}" {% if key == selected_key %}selected{% endif %}>{{ key }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<form method="post" action="/microcycle/save">
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <label>Microcycle:</label>
+      <input type="text" class="form-control" name="meta_microcycle" value="{{ meta.microcycle }}">
+    </div>
+    <div class="col-md-2">
+      <label>From:</label>
+      <input type="date" class="form-control" name="meta_from" id="from_date" value="{{ meta.from }}">
+    </div>
+    <div class="col-md-2">
+      <label>To:</label>
+      <input type="date" class="form-control" name="meta_to" id="to_date" value="{{ meta.to }}">
+    </div>
+    <div class="col-md-2">
+      <label>Week:</label>
+      <input type="text" class="form-control" name="meta_week" id="week_number" value="{{ meta.week }}">
+    </div>
+    <div class="col-md-3">
+      <label>Period:</label>
+      <input type="text" class="form-control" name="meta_period" value="{{ meta.period }}">
+    </div>
+  </div>
+
+  <div class="text-end mb-4">
+    <button type="button" class="btn btn-outline-primary" onclick="autoFill()">Auto-Fill Week</button>
+  </div>
+
+  <table class="table table-bordered text-center align-middle">
+    <thead class="table-primary">
+      <tr>
+        <th></th>
+        {% for day in days %}
+        <th>{{ day }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <th class="table-success text-start">{{ row }}</th>
+        {% for day in days %}
+        <td><textarea class="form-control form-control-sm" name="{{ row }}_{{ day }}" rows="6" style="height: 200px;">{{ data[row][day] }}</textarea></td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="text-center mt-4">
+    <button type="submit" class="btn btn-success">Save Microcycle</button>
+  </div>
+</form>
+
+<script>
+function autoFill() {
+  const today = new Date();
+  const dayOfWeek = today.getDay(); // 0 = Sunday
+  const sunday = new Date(today);
+  sunday.setDate(today.getDate() - dayOfWeek);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate() + 6);
+
+  document.getElementById("from_date").value = sunday.toISOString().split("T")[0];
+  document.getElementById("to_date").value = saturday.toISOString().split("T")[0];
+
+  const oneJan = new Date(sunday.getFullYear(), 0, 1);
+  const week = Math.ceil((((sunday - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
+  document.getElementById("week_number").value = week;
+}
+</script>
+{% endblock %}

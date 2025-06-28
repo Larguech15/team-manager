@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Match</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+<a href="/" class="btn btn-secondary mb-3">Back to Main Menu</a>
+<div class="container mt-5">
+    <h2>Add Match</h2>
+    <form action="/add_match" method="post">
+        <div class="mb-3">
+            <label class="form-label">Match ID</label>
+            <input type="text" name="match_id" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Opponent</label>
+            <input type="text" name="opponent" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" name="date" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Time</label>
+            <input type="time" name="time" class="form-control" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Venue</label>
+            <input type="text" name="venue" class="form-control">
+        </div>
+        <div class="mb-3">
+            <label class="form-label">League or Cup</label>
+            <input type="text" name="competition" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-success">Add Match</button>
+    </form>
+</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Edit Player{% endblock %}
+{% block content %}
+<h2>Edit Player #{{ num }}</h2>
+<form method="post" enctype="multipart/form-data">
+    <div class="mb-3"><label>Full Name</label><input class="form-control" name="name" value="{{ player.name }}"></div>
+    <div class="mb-3"><label>Height</label><input class="form-control" name="height" value="{{ player.height }}"></div>
+    <div class="mb-3"><label>Weight</label><input class="form-control" name="weight" value="{{ player.weight }}"></div>
+    <div class="mb-3"><label>Position</label><input class="form-control" name="position" value="{{ player.position }}"></div>
+    <div class="mb-3"><label>Date of Birth</label><input type="date" class="form-control" name="dob" value="{{ player.dob }}"></div>
+    <div class="mb-3"><label>Comment</label><textarea class="form-control" name="comment">{{ player.comment }}</textarea></div>
+    <div class="mb-3"><label>Photo (optional)</label><input type="file" class="form-control" name="photo"></div>
+    <button class="btn btn-primary">Update Player</button>
+    <a href="/players" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

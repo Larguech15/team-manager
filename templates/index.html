@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}UAE NATIONAL TEAM{% endblock %}
+{% block content %}
+<style>
+.card-hover {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.card-hover:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+.card-img-top {
+  height: 180px;
+  object-fit: cover;
+}
+</style>
+
+<div class="text-center">
+  <h1 class="mb-5">ZIAD LARGACH</h1>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <a href="/players" class="text-decoration-none text-white">
+      <div class="card bg-dark card-hover text-white">
+        <img src="{{ url_for('static', filename='backgrounds/players.jpg') }}" class="card-img-top" alt="Players">
+        <div class="card-body text-white">
+          <h4 class="card-title text-center">Manage Players</h4>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="/matches" class="text-decoration-none text-white">
+      <div class="card bg-dark card-hover text-white">
+        <img src="{{ url_for('static', filename='backgrounds/matches.jpg') }}" class="card-img-top" alt="Matches">
+        <div class="card-body text-white">
+          <h4 class="card-title text-center">View Matches</h4>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="/attendance" class="text-decoration-none text-white">
+      <div class="card bg-dark card-hover text-white">
+        <img src="{{ url_for('static', filename='backgrounds/attendance.jpg') }}" class="card-img-top" alt="Attendance">
+        <div class="card-body text-white">
+          <h4 class="card-title text-center">Attendance</h4>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+    <a href="/practice" class="text-decoration-none text-white">
+      <div class="card bg-dark card-hover text-white">
+        <img src="{{ url_for('static', filename='backgrounds/practice.jpg') }}" class="card-img-top" alt="Practice">
+        <div class="card-body text-white">
+          <h4 class="card-title text-center">Practice Calendar</h4>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-md-4">
+  <a href="/season" class="text-decoration-none text-white">
+      <div class="card bg-dark card-hover text-white">
+        <img src="{{ url_for('static', filename='backgrounds/season.jpg') }}" class="card-img-top" alt="Players">
+        <div class="card-body text-white">
+          <h4 class="card-title text-center">Season Overview</h4>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+{% endblock %}
+

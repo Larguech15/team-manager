@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Matches{% endblock %}
+{% block content %}
+<h2>Match List</h2>
+<a href="/add_match" class="btn btn-success mb-3">Add Match</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Opponent</th>
+            <th>Court</th>
+            <th>Competition</th>
+            <th>Score</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for id, match in matches.items() %}
+        <tr>
+            <td>{{ id }}</td>
+            <td>{{ match.date }}</td>
+            <td>{{ match.time }}</td>
+            <td>{{ match.opponent }}</td>
+            <td>{{ match.venue }}</td>
+            <td>{{ match.competition }}</td>
+            <td>{{ match.score }}</td>
+            <td>
+                <a href="/edit_match/{{ id }}" class="btn btn-primary btn-sm">Edit</a>
+                <form action="/delete_match/{{ id }}" method="post" style="display:inline;" onsubmit="return confirm('Delete this match?');">
+                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

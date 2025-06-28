@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{% block title %}UAE National Team{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: url('') no-repeat center center fixed;
+      background-size: cover;
+    }
+    .container {
+      background-color: rgba(0, 0, 0, 0.7);
+      padding: 20px;
+      border-radius: 8px;
+      color: white;
+    }
+    body.light-mode {
+      background-color: #f8f9fa;
+      background-image: none !important;
+      color: black;
+    }
+    .container.light-mode {
+      background-color: rgba(255, 255, 255, 0.9);
+      color: black;
+    }
+  </style>
+  <script>
+    const themes = {
+      'black': "{{ url_for('static', filename='backgrounds/black.jpg') }}",
+      'uae': "{{ url_for('static', filename='backgrounds/uae.jpg') }}",
+      'volleyball': "{{ url_for('static', filename='backgrounds/volleyball.jpg') }}",
+      'volleyball2': "{{ url_for('static', filename='backgrounds/volleyball2.jpg') }}"
+    };
+
+    function applyTheme(theme) {
+      if (theme === 'light') {
+        document.body.classList.add('light-mode');
+        document.querySelector('.container').classList.add('light-mode');
+        localStorage.setItem('selectedTheme', theme);
+      } else {
+        document.body.classList.remove('light-mode');
+        document.querySelector('.container').classList.remove('light-mode');
+        if (themes[theme]) {
+          document.body.style.backgroundImage = `url('${themes[theme]}')`;
+          localStorage.setItem('selectedTheme', theme);
+        }
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('selectedTheme') || 'dark';
+      applyTheme(saved);
+
+      const selector = document.getElementById('themeSelector');
+      if (selector) {
+        selector.value = saved;
+        selector.addEventListener('change', () => applyTheme(selector.value));
+      }
+    });
+  </script>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Home Page</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav me-auto">
+          {% if session.selected_team %}
+          <li class="nav-item"><a class="nav-link text-danger" href="{{ url_for('home') }}">Switch Team</a></li>
+          <li class="nav-item"><a class="nav-link" href="/players">Players</a></li>
+          <li class="nav-item"><a class="nav-link" href="/matches">Matches</a></li>
+          <li class="nav-item"><a class="nav-link" href="/attendance">Attendance</a></li>
+          <li class="nav-item"><a class="nav-link" href="/practice">Practice</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('season') }}">Season</a></li>
+          <li class="nav-item"><a class="nav-link text-danger" href="/logout">Logout</a></li>
+        {% endif %}
+        </ul>
+        <div class="text-end">
+          <label class="text-white me-2">Theme:</label>
+          <select id="themeSelector" class="form-select d-inline-block" style="width: 200px;">
+            <option value="black">Black</option>
+            <option value="uae">UAE</option>
+            <option value="volleyball">Volleyball</option>
+            <option value="volleyball2">Volleyball2</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </nav>
+  {% if session.selected_team %}
+    <div class="position-fixed bg-primary text-white px-3 py-1 rounded shadow" style="top: 60px; left: 20px; z-index: 999;">
+      Team {{ session.selected_team }}
+    </div>
+  {% endif %}
+
+  <div class="container pt-5" style="padding-top: 80px !important;">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>

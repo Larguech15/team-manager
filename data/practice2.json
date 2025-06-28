@@ -1,0 +1,139 @@
+{
+  "2025-06": {
+    "2025-06-01": {
+      "main": "VOLLEYBALL",
+      "secondary": "VOLLEYBALL",
+      "note_main_start": "08:30",
+      "note_main_end": "11:30",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-02": {
+      "main": "GYM",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-03": {
+      "main": "GYM",
+      "secondary": "VOLLEYBALL",
+      "note_main_start": "07:00",
+      "note_main_end": "08:00",
+      "note_secondary_start": "19:30",
+      "note_secondary_end": "20:30"
+    },
+    "2025-06-04": {
+      "main": "",
+      "secondary": "GYM",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-06": {
+      "main": "REST",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-13": {
+      "main": "REST",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-19": {
+      "main": "GYM",
+      "secondary": "VOLLEYBALL",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-20": {
+      "main": "REST",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-23": {
+      "main": "GYM",
+      "secondary": "TOURNAMENT",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-24": {
+      "main": "GYM",
+      "secondary": "VOLLEYBALL",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-25": {
+      "main": "FRIENDLY MATCH",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-26": {
+      "main": "FRIENDLY MATCH",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-27": {
+      "main": "REST",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-28": {
+      "main": "TOURNAMENT",
+      "secondary": "",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-29": {
+      "main": "",
+      "secondary": "TOURNAMENT",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    },
+    "2025-06-30": {
+      "main": "TOURNAMENT",
+      "secondary": "VOLLEYBALL",
+      "note_main_start": "",
+      "note_main_end": "",
+      "note_secondary_start": "",
+      "note_secondary_end": ""
+    }
+  },
+  "2025-07": {
+    "2025-07-03": {
+      "main": "VOLLEYBALL",
+      "secondary": ""
+    }
+  },
+  "2025-08": {}
+}

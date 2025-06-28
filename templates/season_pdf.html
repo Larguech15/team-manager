@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 9px;
+    }
+    th, td {
+      border: 1px solid #999;
+      text-align: center;
+      padding: 2px;
+      width: 20px;
+      height: 20px;
+    }
+    .practice { background-color: #0d6efd; color: white; }
+    .friendly { background-color: #ffc107; color: black; }
+    .rest { background-color: #dc3545; color: white; }
+    .tournament { background-color: #198754; color: white; }
+    .empty { background-color: #f8f9fa; }
+  </style>
+</head>
+<body>
+
+<h3 style="text-align:center;">Season Calendar (June 2025 – May 2026)</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Month</th>
+      {% for d in range(1, 32) %}
+      <th>{{ d }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for label, month in month_data %}
+    <tr>
+      <td><strong>{{ label }}</strong></td>
+      {% for activity in month %}
+      <td class="{{ activity if activity else 'empty' }}"></td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<br><br>
+<h4>Legend</h4>
+<ul style="list-style: none; padding-left: 0; font-size: 12px;">
+  <li>
+    <span style="display:inline-block; width: 16px; height: 16px; background-color: #0d6efd; border: 1px solid #333; margin-right: 5px;"></span>
+    GYM / VOLLEYBALL
+  </li>
+  <li>
+    <span style="display:inline-block; width: 16px; height: 16px; background-color: #ffc107; border: 1px solid #333; margin-right: 5px;"></span>
+    FRIENDLY MATCH
+  </li>
+  <li>
+    <span style="display:inline-block; width: 16px; height: 16px; background-color: #dc3545; border: 1px solid #333; margin-right: 5px;"></span>
+    REST
+  </li>
+  <li>
+    <span style="display:inline-block; width: 16px; height: 16px; background-color: #198754; border: 1px solid #333; margin-right: 5px;"></span>
+    TOURNAMENT
+  </li>
+</ul>
+
+
+</body>
+</html>

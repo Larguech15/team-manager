@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Edit Match{% endblock %}
+{% block content %}
+<h2>Edit Match #{{ match_id }}</h2>
+<form method="post">
+    <div class="mb-3"><label>Opponent</label><input class="form-control" name="opponent" value="{{ match.opponent }}"></div>
+    <div class="mb-3"><label>Date</label><input class="form-control" type="date" name="date" value="{{ match.date }}"></div>
+    <div class="mb-3"><label>Time</label><input class="form-control" name="time" value="{{ match.time }}"></div>
+    <div class="mb-3"><label>Venue</label><input class="form-control" name="venue" value="{{ match.venue }}"></div>
+    <div class="mb-3"><label>Competition</label><input class="form-control" name="competition" value="{{ match.competition }}"></div>
+    <div class="mb-3"><label>Score</label><input class="form-control" name="score" value="{{ match.score }}"></div>
+    <button class="btn btn-primary">Update Match</button>
+    <a href="/matches" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

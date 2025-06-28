@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Season View{% endblock %}
+{% block content %}
+<h2 class="text-center mb-4">Season Calendar (June 2025 – May 2026)</h2>
+
+<div class="text-center mb-3">
+  <a href="{{ url_for('export_season_pdf') }}" class="btn btn-outline-secondary">
+    Export as PDF
+  </a>
+</div>
+
+<table class="table table-bordered text-center table-sm" style="font-size: 10px;">
+
+<table class="table table-bordered text-center">
+  <thead class="table-secondary">
+    <tr>
+      <th>Month</th>
+      {% for d in range(1, 32) %}
+        <th>{{ d }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for label, month in month_data %}
+  <tr>
+    <td style="font-size: 11px;"><strong>{{ label }}</td>
+    {% for activity in month %}
+      {% set color = {
+        "practice": "bg-primary text-white",
+        "friendly": "bg-warning text-dark",
+        "rest": "bg-danger text-white",
+        "tournament": "bg-success text-white"
+      }.get(activity, "bg-light") %}
+      <td class="{{ color }}" style="padding: 2px; width: 20px; height: 20px;"></td>
+    {% endfor %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<div class="mt-4 text-center">
+  <h5>Legend</h5>
+  <div class="d-flex justify-content-center flex-wrap gap-2">
+    <div class="d-flex align-items-center">
+      <div class="bg-primary" style="width: 20px; height: 20px; margin-right: 5px;"></div>
+      <span><strong>PRACTICE</strong></span>
+    </div>
+    <div class="d-flex align-items-center">
+      <div class="bg-warning" style="width: 20px; height: 20px; margin-right: 5px;"></div>
+      <span><strong>FRIENDLY MATCH</strong></span>
+    </div>
+    <div class="d-flex align-items-center">
+      <div class="bg-danger" style="width: 20px; height: 20px; margin-right: 5px;"></div>
+      <span><strong>REST</strong></span>
+    </div>
+    <div class="d-flex align-items-center">
+      <div class="bg-success" style="width: 20px; height: 20px; margin-right: 5px;"></div>
+      <span><strong>TOURNAMENT</strong></span>
+    </div>
+  </div>
+</div>
+{% endblock %}

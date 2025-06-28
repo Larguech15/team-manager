@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Edit Attendance{% endblock %}
+{% block content %}
+<h2>Edit Attendance for {{ date }}</h2>
+<form method="post">
+    <ul class="list-group">
+        {% for num, player in players.items() %}
+        <li class="list-group-item">
+            <label>
+                <input type="checkbox" name="present" value="{{ num }}" {% if num in present %}checked{% endif %}>
+                {{ player.name }}
+            </label>
+        </li>
+        {% endfor %}
+    </ul>
+    <button class="btn btn-primary mt-3">Update Attendance</button>
+    <a href="/attendance" class="btn btn-secondary mt-3">Cancel</a>
+</form>
+{% endblock %}

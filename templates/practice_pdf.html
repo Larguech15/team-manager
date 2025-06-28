@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Practice Calendar – {{ month }}</title>
+  <style>
+    @page {
+      size: A4 landscape;
+      margin: 10mm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      margin: 0;
+      padding: 0;
+      font-weight: bold;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid #999;
+      padding: 4px;
+      vertical-align: top;
+      height: 70px;
+    }
+
+    th {
+      background-color: #ddd;
+      font-size: 20px;
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .day-number {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 3px;
+    }
+
+    .badge {
+      display: block;
+      font-size: 9px;
+      margin-bottom: 2px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      width: fit-content;
+      text-align: center;
+    }
+
+    .GYM { background-color: #d4edda; color: #000; }
+    .VOLLEYBALL { background-color: #cce5ff; color: #000; }
+    .FRIENDLY { background-color: #fff3cd; color: #000; }
+    .REST { background-color: #f8d7da; color: #000; }
+    .TOURNAMENT { background-color: #e0e0e0; color: #000; }
+
+    .summary {
+      margin-top: 10px;
+      padding: 8px;
+      background: #f1f1f1;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Practice Calendar – {{ month }}</h2>
+
+<table>
+  <thead>
+    <tr>
+      {% for day in week_days %}
+      <th>{{ day }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for week in calendar_grid %}
+    <tr>
+      {% for day in week %}
+        {% set entry = schedule.get(day, {"main": "", "secondary": ""}) %}
+        <td>
+          {% if day %}
+            <span class="day-number">{{ day.split('-')[-1] }}</span>
+            {% if entry.main %}
+              <div class="badge {{ entry.main.split()[0] }}">{{ entry.main }} (.)</div>
+              {% if entry.note_main_start and entry.note_main_end %}
+                <div style="font-size: 10px; color: #555; text-align: center;"><em>{{ entry.note_main_start }} to {{ entry.note_main_end }}</em></div>
+              {% endif %}
+            {% endif %}
+
+            {% if main and secondary %}
+              <hr style="margin: 2px 0;">
+            {% endif %}
+
+            {% if entry.secondary %}
+              <div class="badge {{ entry.secondary.split()[0] }}">{{ entry.secondary }} (.)</div>
+              {% if entry.note_secondary_start and entry.note_secondary_end %}
+                <div style="font-size: 10px; color: #555; text-align: center;"><em>{{ entry.note_secondary_start }} to {{ entry.note_secondary_end }}</em></div>
+              {% endif %}
+            {% endif %}
+          </td>
+          {% else %}
+            <td></td>
+          {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<div class="summary">
+  <strong>Monthly Summary:</strong><br>
+  GYM: {{ summary['GYM'] }},
+  VOLLEYBALL: {{ summary['VOLLEYBALL'] }},
+  FRIENDLY MATCH: {{ summary['FRIENDLY MATCH'] }},
+  REST: {{ summary['REST'] }},
+  TOURNAMENT: {{ summary['TOURNAMENT'] }}<br><br>
+
+  {% if total > 0 %}
+  <strong>Percentage Breakdown:</strong><br>
+  {% for key in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT'] %}
+    {{ key }}: {{ (summary[key] / total * 100) | round(1) }}%
+    {% if not loop.last %} | {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  <br><br><strong>Generated:</strong> {{ datetime.now().strftime('%Y-%m-%d %H:%M') }}
+</div>
+
+</body>
+</html>

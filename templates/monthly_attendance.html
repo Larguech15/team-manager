@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Monthly Attendance{% endblock %}
+{% block content %}
+<h1 class="text-center" style="font-family: 'Brush Script MT', cursive;">Monthly Attendance</h1>
+
+<form method="post">
+  <div class="text-center mb-3">
+    <label for="month">Month/Year: </label>
+    <input type="text" id="month" name="month" placeholder="e.g. June 2025" class="form-control d-inline-block" style="width: 200px;">
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-bordered table-sm">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Player Name</th>
+          {% for day in range(1, 32) %}
+            <th>{{ day }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for num, player in players.items() %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ player.name }}</td>
+          {% for day in range(1, 32) %}
+          <td>
+            <div class="attendance-options">
+              {% set base = 'p' ~ num ~ 'd' ~ day %}
+              <label><input type="radio" name="{{ base }}" value="P">P</label>
+              <label><input type="radio" name="{{ base }}" value="A">A</label>
+            </div>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="Info mt-4">
+    <strong>Info:</strong><br>
+    P = Present &nbsp;&nbsp; A = Absent
+  </div>
+
+  <div class="text-center mt-4">
+    <button type="submit" class="btn btn-primary">Save Attendance</button>
+  </div>
+</form>
+{% endblock %}

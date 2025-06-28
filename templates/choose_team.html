@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Choose Team{% endblock %}
+{% block content %}
+
+<h2 class="text-center my-5">Select Your Team</h2>
+
+<div class="d-flex justify-content-center gap-4">
+  <form method="post" action="{{ url_for('set_team') }}">
+    <input type="hidden" name="team" value="1">
+    <button class="btn btn-primary btn-lg">Team 1</button>
+  </form>
+
+  <form method="post" action="{{ url_for('set_team') }}">
+    <input type="hidden" name="team" value="2">
+    <button class="btn btn-success btn-lg">Team 2</button>
+  </form>
+</div>
+
+{% endblock %}

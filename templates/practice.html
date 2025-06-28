@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block title %}Practice Schedule{% endblock %}
+{% block content %}
+
+<h2 class="text-center mb-4">Practice Calendar</h2>
+
+<div class="text-center mb-3">
+  <a href="/microcycle" class="btn btn-outline-info me-2">Open Microcycle</a>
+  <a href="{{ url_for('export_practice_pdf', month=selected_month) }}" class="btn btn-outline-secondary">Export PDF</a>
+</div>
+
+<form method="post">
+  <div class="mb-3 text-center">
+    <label for="month">Month:</label>
+    <input type="month" name="month" id="month" value="{{ selected_month }}" required>
+    <button class="btn btn-primary">Load</button>
+  </div>
+</form>
+
+<form method="get" class="text-center mb-3">
+  <input type="hidden" name="month" value="{{ selected_month }}">
+  <label for="filter" class="me-2">Filter by Activity:</label>
+  <select name="filter" onchange="this.form.submit()" class="form-select d-inline-block" style="width: 200px;">
+    <option value="">Show All</option>
+    {% for t in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT'] %}
+      <option value="{{ t }}" {% if t == activity_filter %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<div class="position-absolute start-2 m-3 small" style="top: 130px; left: 50px; z-index: 10; width: 380px;"> 
+<div class="small" style="max-width: 350px; font-size: 12px;">
+
+{% if overall_summary %}
+<div class="mb-2">
+  <strong>Overall Summary (All Months):</strong>
+  GYM: {{ overall_summary['GYM'] }},
+  VOLLEYBALL: {{ overall_summary['VOLLEYBALL'] }},
+  FRIENDLY MATCHES: {{ overall_summary['FRIENDLY MATCH'] }},
+  REST: {{ overall_summary['REST'] }},
+  TOURNAMENT: {{ overall_summary['TOURNAMENT'] }}
+</div>
+{% endif %}
+
+{% set summary = {'GYM': 0, 'VOLLEYBALL': 0, 'FRIENDLY MATCH': 0, 'REST': 0, 'TOURNAMENT': 0} %}
+{% for entry in schedule.values() %}
+  {% if entry.main %}{% set _ = summary.__setitem__(entry.main, summary[entry.main] + 1) %}{% endif %}
+  {% if entry.secondary %}{% set _ = summary.__setitem__(entry.secondary, summary[entry.secondary] + 1) %}{% endif %}
+{% endfor %}
+
+<div class="mb-2">
+  <strong>Monthly Summary:</strong>
+  GYM: {{ summary['GYM'] }},
+  VOLLEYBALL: {{ summary['VOLLEYBALL'] }},
+  FRIENDLY MATCHES: {{ summary['FRIENDLY MATCH'] }},
+  REST: {{ summary['REST'] }},
+  TOURNAMENT: {{ summary['TOURNAMENT'] }}
+</div>
+
+<div>
+  <strong>Monthly % Breakdown:</strong><br>
+  {% set total = summary['GYM'] + summary['VOLLEYBALL'] + summary['FRIENDLY MATCH'] + summary['REST'] + summary['TOURNAMENT'] %}
+  {% for key in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT'] %}
+    {% set percent = (summary[key] / total * 100) | round(1) if total > 0 else 0 %}
+    {{ key }}: {{ percent }}%
+    {% if not loop.last %} | {% endif %}
+  {% endfor %}
+</div>
+</div>
+</div>
+
+
+{% if month_days %}
+  {% if not edit_mode %}
+  <form method="get" class="text-center mb-3">
+    <input type="hidden" name="month" value="{{ selected_month }}">
+    <input type="hidden" name="edit" value="1">
+    <button class="btn btn-warning">Edit Schedule</button>
+  </form>
+  {% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <a href="{{ url_for('practice', month=prev_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
+    &larr; {{ prev_month }}
+  </a>
+  <h4 class="mb-0">Schedule for {{ selected_month }}</h4>
+  <a href="{{ url_for('practice', month=next_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
+    {{ next_month }} &rarr;
+  </a>
+</div>
+  
+    <form method="post" action="/practice/save">
+    <input type="hidden" name="month" value="{{ selected_month }}">
+    <table class="table table-bordered text-center align-middle" style="table-layout: fixed;">
+      <thead class="table-secondary">
+        <tr>
+          {% for day in week_days %}
+            <th>{{ day }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in calendar_grid %}
+        <tr>
+          {% for day in week %}
+          {% set entry = schedule.get(day, {"main": "", "secondary": ""}) %}
+          {% if day %}
+          <td class="position-relative {% if day == today %}bg-secondary text-white{% else %}bg-white text-dark{% endif %} border">
+            <strong class="position-absolute top-0 start-0 m-1">{{ day.split('-')[-1] }}</strong><br><br>
+            {% if edit_mode %}
+              <div class="text-start small mb-1">
+                <label for="main_{{ day }}"><strong>Morning:</strong></label>
+                <select class="form-select form-select-sm" name="main_{{ day }}" id="main_{{ day }}">
+                  <option value="">-- None --</option>
+                  {% for opt in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT'] %}
+                    <option value="{{ opt }}" {% if entry.main == opt %}selected{% endif %}>{{ opt }}</option>
+                  {% endfor %}
+                </select>
+                <div class="row gx-1 align-items-center mt-1">
+                  <div class="col">
+                    <input type="time" class="form-control form-control-sm"
+                           name="note_main_start_{{ day }}"
+                           value="{{ entry.note_main_start | default('') }}">
+                  </div>
+                  <div class="col-auto">to</div>
+                  <div class="col">
+                    <input type="time" class="form-control form-control-sm"
+                           name="note_main_end_{{ day }}"
+                           value="{{ entry.note_main_end | default('') }}">
+                  </div>
+                </div>
+
+              </div>
+
+              <hr class="my-1">
+
+              <div class="text-start small">
+                <label for="secondary_{{ day }}"><strong>Afternoon:</strong></label>
+                <select class="form-select form-select-sm" name="secondary_{{ day }}" id="secondary_{{ day }}">
+                  <option value="">-- None --</option>
+                  {% for opt in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT'] %}
+                    <option value="{{ opt }}" {% if entry.secondary == opt %}selected{% endif %}>{{ opt }}</option>
+                  {% endfor %}
+                </select>
+                <div class="row gx-1 align-items-center mt-1">
+                  <div class="col">
+                    <input type="time" class="form-control form-control-sm"
+                           name="note_secondary_start_{{ day }}"
+                           value="{{ entry.note_secondary_start | default('') }}">
+                  </div>
+                  <div class="col-auto">to</div>
+                  <div class="col">
+                    <input type="time" class="form-control form-control-sm"
+                           name="note_secondary_end_{{ day }}"
+                           value="{{ entry.note_secondary_end | default('') }}">
+                  </div>
+                </div>
+
+              </div>
+            {% else %}
+              {% if entry.main %}
+                {% set color = {
+                  'GYM': 'success', 'VOLLEYBALL': 'primary', 'FRIENDLY MATCH': 'warning',
+                  'REST': 'danger', 'TOURNAMENT': 'light'
+                }[entry.main] %}
+                <div class="badge bg-{{ color }} d-block mb-1 text-dark">
+                  {{ entry.main }} (.)
+                  {% if entry.note_main_start and entry.note_main_end %}
+                    <br><small><em>{{ entry.note_main_start }} to {{ entry.note_main_end }}</em></small>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if entry.main and entry.secondary %}
+                <hr class="my-2">
+              {% endif %}
+
+              {% if entry.secondary %}
+                {% set color2 = {
+                  'GYM': 'success', 'VOLLEYBALL': 'primary', 'FRIENDLY MATCH': 'warning',
+                  'REST': 'danger', 'TOURNAMENT': 'light'
+                }[entry.secondary] %}
+                <div class="badge bg-{{ color2 }} d-block text-dark">
+                  {{ entry.secondary }} (.)
+                  {% if entry.note_secondary_start and entry.note_secondary_end %}
+                    <br><small><em>{{ entry.note_secondary_start }} to {{ entry.note_secondary_end }}</em></small>
+                  {% endif %}
+                </div>
+              {% endif %}
+            {% endif %}
+          </td>
+          {% else %}
+          <td class="bg-light"></td>
+          {% endif %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% if edit_mode %}
+    <div class="text-center">
+      <button class="btn btn-success">Save Schedule</button>
+    </div>
+    {% endif %}
+  </form>
+{% endif %}
+
+{% endblock %}

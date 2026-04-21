@@ -4,6 +4,7 @@ import os
 import json
 from calendar import monthrange, month_name
 from datetime import datetime
+from db import init_db, fetch_all_dicts, fetch_one_dict, execute
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -18,6 +19,7 @@ PRACTICE_FILE = 'practice.json'
 MIRCROCYCLE_FILE = 'microcycle.json'
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+init_db()
 
 # Helper functions
 def load_data(base_filename):
@@ -59,74 +61,111 @@ def get_file_path(base_filename):
 
 @app.route('/players')
 def list_players():
-    players_file = get_file_path("players.json")
-    players = load_data(PLAYERS_FILE)
+    team = session.get('selected_team')
+    rows = fetch_all_dicts(
+        "SELECT * FROM players WHERE team = %s ORDER BY number" if os.environ.get("DATABASE_URL")
+        else "SELECT * FROM players WHERE team = ? ORDER BY number",
+        (team,)
+    )
+    players = {row["number"]: row for row in rows}
     return render_template('players.html', players=players)
+
 
 @app.route('/add_player', methods=['GET', 'POST'])
 def add_player():
     if request.method == 'POST':
-        players_file = get_file_path("players.json")
-        players = load_data(PLAYERS_FILE)
-        num = request.form['num']
+        team = session.get('selected_team')
+        num = request.form['num'].strip()
         photo = request.files.get('photo')
         photo_filename = ''
 
-        if photo:
+        if photo and photo.filename:
             filename = secure_filename(num + '_' + photo.filename)
             photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             photo_filename = filename
 
-        players[num] = {
-            'name': request.form['name'],
-            'height': request.form['height'],
-            'weight': request.form['weight'],
-            'position': request.form['position'],
-            'dob': request.form['dob'],
-            'comment': request.form['comment'],
-            'photo': photo_filename
-        }
-        save_data(PLAYERS_FILE, players)
+        query = """
+            INSERT INTO players (team, number, name, height, weight, position, dob, comment, photo)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """ if os.environ.get("DATABASE_URL") else """
+            INSERT INTO players (team, number, name, height, weight, position, dob, comment, photo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        execute(query, (
+            team,
+            num,
+            request.form['name'].strip(),
+            request.form.get('height', '').strip(),
+            request.form.get('weight', '').strip(),
+            request.form.get('position', '').strip(),
+            request.form.get('dob', '').strip(),
+            request.form.get('comment', '').strip(),
+            photo_filename
+        ))
+
         flash('Player added successfully')
         return redirect(url_for('list_players'))
+
     return render_template('add_player.html')
+
 
 @app.route('/edit_player/<string:num>', methods=['GET', 'POST'])
 def edit_player(num):
-    players_file = get_file_path("players.json")
-    players = load_data(PLAYERS_FILE)
-    if num not in players:
+    team = session.get('selected_team')
+
+    select_query = "SELECT * FROM players WHERE team = %s AND number = %s" if os.environ.get("DATABASE_URL") \
+        else "SELECT * FROM players WHERE team = ? AND number = ?"
+
+    player = fetch_one_dict(select_query, (team, num))
+
+    if not player:
         return "Player not found", 404
 
     if request.method == 'POST':
-        player = players[num]
-        player['name'] = request.form['name']
-        player['height'] = request.form['height']
-        player['weight'] = request.form['weight']
-        player['position'] = request.form['position']
-        player['dob'] = request.form['dob']
-        player['comment'] = request.form['comment']
-
         photo = request.files.get('photo')
+        photo_filename = player.get("photo", "")
+
         if photo and photo.filename:
             filename = secure_filename(num + '_' + photo.filename)
             photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            player['photo'] = filename
+            photo_filename = filename
 
-        save_data(PLAYERS_FILE, players)
+        update_query = """
+            UPDATE players
+            SET name = %s, height = %s, weight = %s, position = %s, dob = %s, comment = %s, photo = %s
+            WHERE team = %s AND number = %s
+        """ if os.environ.get("DATABASE_URL") else """
+            UPDATE players
+            SET name = ?, height = ?, weight = ?, position = ?, dob = ?, comment = ?, photo = ?
+            WHERE team = ? AND number = ?
+        """
+
+        execute(update_query, (
+            request.form['name'].strip(),
+            request.form.get('height', '').strip(),
+            request.form.get('weight', '').strip(),
+            request.form.get('position', '').strip(),
+            request.form.get('dob', '').strip(),
+            request.form.get('comment', '').strip(),
+            photo_filename,
+            team,
+            num
+        ))
+
         flash('Player updated')
         return redirect(url_for('list_players'))
 
-    return render_template('edit_player.html', num=num, player=players[num])
+    return render_template('edit_player.html', num=num, player=player)
+
 
 @app.route('/delete_player/<string:num>', methods=['POST'])
 def delete_player(num):
-    players_file = get_file_path("players.json")
-    players = load_data(PLAYERS_FILE)
-    if num in players:
-        del players[num]
-        save_data(PLAYERS_FILE, players)
-        flash('Player deleted')
+    team = session.get('selected_team')
+    delete_query = "DELETE FROM players WHERE team = %s AND number = %s" if os.environ.get("DATABASE_URL") \
+        else "DELETE FROM players WHERE team = ? AND number = ?"
+    execute(delete_query, (team, num))
+    flash('Player deleted')
     return redirect(url_for('list_players'))
 
 @app.route('/matches')

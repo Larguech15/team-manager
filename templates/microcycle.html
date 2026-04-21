@@ -68,19 +68,32 @@
 
 <script>
 function autoFill() {
+  const seasonStart = new Date("2026-04-20"); // Monday, Week 1
   const today = new Date();
-  const dayOfWeek = today.getDay(); // 0 = Sunday
-  const sunday = new Date(today);
-  sunday.setDate(today.getDate() - dayOfWeek);
-  const saturday = new Date(sunday);
-  saturday.setDate(sunday.getDate() + 6);
 
-  document.getElementById("from_date").value = sunday.toISOString().split("T")[0];
-  document.getElementById("to_date").value = saturday.toISOString().split("T")[0];
+  // Convert JS Sunday=0..Saturday=6 into Monday-based offset
+  const day = today.getDay(); // Sun=0, Mon=1, ...
+  const mondayOffset = day === 0 ? -6 : 1 - day;
 
-  const oneJan = new Date(sunday.getFullYear(), 0, 1);
-  const week = Math.ceil((((sunday - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
-  document.getElementById("week_number").value = week;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  // If before season start, force first week
+  let effectiveMonday = monday < seasonStart ? new Date(seasonStart) : monday;
+  let effectiveSunday = new Date(effectiveMonday);
+  effectiveSunday.setDate(effectiveMonday.getDate() + 6);
+
+  document.getElementById("from_date").value = effectiveMonday.toISOString().split("T")[0];
+  document.getElementById("to_date").value = effectiveSunday.toISOString().split("T")[0];
+
+  const diffMs = effectiveMonday - seasonStart;
+  const diffDays = Math.floor(diffMs / 86400000);
+  const weekNumber = Math.floor(diffDays / 7) + 1;
+
+  document.getElementById("week_number").value = weekNumber;
 }
 </script>
 {% endblock %}

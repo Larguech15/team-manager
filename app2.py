@@ -170,58 +170,93 @@ def delete_player(num):
 
 @app.route('/matches')
 def list_matches():
-    matches_file = get_file_path("matches.json")
-    matches = load_data(MATCHES_FILE)
+    team = session.get('selected_team')
+    rows = fetch_all_dicts(
+        "SELECT * FROM matches WHERE team = %s ORDER BY date, time" if os.environ.get("DATABASE_URL")
+        else "SELECT * FROM matches WHERE team = ? ORDER BY date, time",
+        (team,)
+    )
+    matches = {row["match_id"]: row for row in rows}
     return render_template('matches.html', matches=matches)
+
 
 @app.route('/add_match', methods=['GET', 'POST'])
 def add_match():
     if request.method == 'POST':
-        matches_file = get_file_path("matches.json")
-        matches = load_data(MATCHES_FILE)
-        match_id = request.form['match_id']
-        matches[match_id] = {
-            'opponent': request.form['opponent'],
-            'date': request.form['date'],
-            'time': request.form['time'],
-            'venue': request.form['venue'],
-            'competition': request.form['competition'],
-            'score': 'TBD'
-        }
-        save_data(MATCHES_FILE, matches)
+        team = session.get('selected_team')
+
+        query = """
+            INSERT INTO matches (team, match_id, opponent, date, time, venue, competition, score)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """ if os.environ.get("DATABASE_URL") else """
+            INSERT INTO matches (team, match_id, opponent, date, time, venue, competition, score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """
+
+        execute(query, (
+            team,
+            request.form['match_id'].strip(),
+            request.form['opponent'].strip(),
+            request.form['date'],
+            request.form['time'],
+            request.form.get('venue', '').strip(),
+            request.form.get('competition', '').strip(),
+            'TBD'
+        ))
+
         flash('Match added successfully')
         return redirect(url_for('list_matches'))
+
     return render_template('add_match.html')
+
 
 @app.route('/edit_match/<match_id>', methods=['GET', 'POST'])
 def edit_match(match_id):
-    matches_file = get_file_path("matches.json")
-    matches = load_data(MATCHES_FILE)
-    if match_id not in matches:
+    team = session.get('selected_team')
+
+    select_query = "SELECT * FROM matches WHERE team = %s AND match_id = %s" if os.environ.get("DATABASE_URL") \
+        else "SELECT * FROM matches WHERE team = ? AND match_id = ?"
+
+    match = fetch_one_dict(select_query, (team, match_id))
+
+    if not match:
         return "Match not found", 404
 
     if request.method == 'POST':
-        match = matches[match_id]
-        match['opponent'] = request.form['opponent']
-        match['date'] = request.form['date']
-        match['time'] = request.form['time']
-        match['venue'] = request.form['venue']
-        match['competition'] = request.form['competition']
-        match['score'] = request.form['score']
-        save_data(MATCHES_FILE, matches)
+        update_query = """
+            UPDATE matches
+            SET opponent = %s, date = %s, time = %s, venue = %s, competition = %s, score = %s
+            WHERE team = %s AND match_id = %s
+        """ if os.environ.get("DATABASE_URL") else """
+            UPDATE matches
+            SET opponent = ?, date = ?, time = ?, venue = ?, competition = ?, score = ?
+            WHERE team = ? AND match_id = ?
+        """
+
+        execute(update_query, (
+            request.form['opponent'].strip(),
+            request.form['date'],
+            request.form['time'],
+            request.form.get('venue', '').strip(),
+            request.form.get('competition', '').strip(),
+            request.form.get('score', '').strip(),
+            team,
+            match_id
+        ))
+
         flash('Match updated')
         return redirect(url_for('list_matches'))
 
-    return render_template('edit_match.html', match_id=match_id, match=matches[match_id])
+    return render_template('edit_match.html', match_id=match_id, match=match)
+
 
 @app.route('/delete_match/<match_id>', methods=['POST'])
 def delete_match(match_id):
-    matches_file = get_file_path("matches.json")
-    matches = load_data(MATCHES_FILE)
-    if match_id in matches:
-        del matches[match_id]
-        save_data(MATCHES_FILE, matches)
-        flash('Match deleted')
+    team = session.get('selected_team')
+    delete_query = "DELETE FROM matches WHERE team = %s AND match_id = %s" if os.environ.get("DATABASE_URL") \
+        else "DELETE FROM matches WHERE team = ? AND match_id = ?"
+    execute(delete_query, (team, match_id))
+    flash('Match deleted')
     return redirect(url_for('list_matches'))
 
 @app.route('/edit_score/<match_id>', methods=['GET', 'POST'])

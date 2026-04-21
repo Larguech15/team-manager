@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Match List</h2>
 <a href="/add_match" class="btn btn-success mb-3">Add Match</a>
+<a href="{{ url_for('export_matches_pdf') }}" class="btn btn-outline-secondary mb-3">Export PDF</a>
 
 <table class="table table-striped">
     <thead>

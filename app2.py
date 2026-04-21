@@ -593,6 +593,30 @@ def delete_player(num):
     flash('Player deleted')
     return redirect(url_for('list_players'))
 
+@app.route("/players/export_pdf")
+def export_players_pdf():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
+
+    html = render_template(
+        "players_pdf.html",
+        players=players,
+        team=session.get("selected_team"),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+
+    pdf = HTML(string=html).write_pdf(stylesheets=[
+        CSS(string='@page { size: A4 portrait; margin: 10mm; }')
+    ])
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=players.pdf'
+    return response
+
+
 
 # ------------------ MATCHES ------------------
 
@@ -719,6 +743,29 @@ def edit_score(match_id):
 
     match = get_match(match_id)
     return render_template('edit_score.html', match_id=match_id, match=match)
+
+@app.route("/matches/export_pdf")
+def export_matches_pdf():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    matches = get_matches()
+
+    html = render_template(
+        "matches_pdf.html",
+        matches=matches,
+        team=session.get("selected_team"),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+
+    pdf = HTML(string=html).write_pdf(stylesheets=[
+        CSS(string='@page { size: A4 portrait; margin: 10mm; }')
+    ])
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=matches.pdf'
+    return response
 
 
 # ------------------ ATTENDANCE ------------------
@@ -942,6 +989,68 @@ def view_monthly_attendance():
         months=months,
         selected_month=selected_month
     )
+
+@app.route("/attendance/export_pdf")
+def export_attendance_pdf():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
+    selected_month = request.args.get("month", "").strip()
+    if not selected_month:
+        selected_month = datetime.now().strftime("%B %Y")
+
+    try:
+        month_name_text, year_text = selected_month.split()
+        month_number = list(calendar.month_name).index(month_name_text)
+        year = int(year_text)
+        days_in_month = calendar.monthrange(year, month_number)[1]
+    except Exception:
+        days_in_month = 31
+
+    saved_attendance = get_monthly_attendance_map(selected_month)
+
+    stats = {}
+    for num, player in players.items():
+        records = saved_attendance.get(num, {})
+        total_days = 0
+        present = 0
+        absent = 0
+
+        for status in records.values():
+            if status == "P":
+                present += 1
+            elif status == "A":
+                absent += 1
+            total_days += 1
+
+        percent = round((present / total_days) * 100, 1) if total_days else 0
+        stats[num] = {
+            "name": player["name"],
+            "present": present,
+            "absent": absent,
+            "percent": percent
+        }
+
+    html = render_template(
+        "attendance_pdf.html",
+        players=players,
+        selected_month=selected_month,
+        saved_attendance=saved_attendance,
+        stats=stats,
+        days_in_month=days_in_month,
+        team=session.get("selected_team"),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+
+    pdf = HTML(string=html).write_pdf(stylesheets=[
+        CSS(string='@page { size: A4 landscape; margin: 8mm; }')
+    ])
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=attendance_{selected_month}.pdf'
+    return response
 
 
 # ------------------ PRACTICE ------------------
@@ -1190,6 +1299,42 @@ def save_microcycle():
 
     flash(f"Saved microcycle for week starting {from_date}")
     return redirect(url_for("microcycle", week=from_date))
+
+@app.route("/microcycle/export_pdf")
+def export_microcycle_pdf():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    selected_key = request.args.get("week", "")
+    all_data = get_all_microcycles()
+
+    if not selected_key:
+        selected_key = next(iter(all_data), "")
+
+    data = all_data.get(selected_key, {})
+    meta = data.get("meta", {"microcycle": "", "from": "", "to": "", "week": "", "period": ""})
+    rows = ["Morning", "Afternoon"]
+    days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    table = {row: {day: data.get(row, {}).get(day, "") for day in days} for row in rows}
+
+    html = render_template(
+        "microcycle_pdf.html",
+        data=table,
+        days=days,
+        rows=rows,
+        meta=meta,
+        team=session.get("selected_team"),
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M")
+    )
+
+    pdf = HTML(string=html).write_pdf(stylesheets=[
+        CSS(string='@page { size: A4 landscape; margin: 10mm; }')
+    ])
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=microcycle_{selected_key}.pdf'
+    return response
 
 
 # ------------------ SEASON ------------------

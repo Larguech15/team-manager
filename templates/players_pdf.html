@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Players PDF</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; }
+    h2 { text-align: center; margin-bottom: 8px; }
+    .meta { margin-bottom: 12px; font-size: 10px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #999; padding: 6px; text-align: center; vertical-align: middle; }
+    th { background: #e9ecef; }
+  </style>
+</head>
+<body>
+  <h2>Players List - Team {{ team }}</h2>
+  <div class="meta">Generated: {{ generated_at }}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Name</th>
+        <th>Height</th>
+        <th>Weight</th>
+        <th>Position</th>
+        <th>DOB</th>
+        <th>Comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for num, player in players.items() %}
+      <tr>
+        <td>{{ num }}</td>
+        <td>{{ player.name }}</td>
+        <td>{{ player.height }}</td>
+        <td>{{ player.weight }}</td>
+        <td>{{ player.position }}</td>
+        <td>{{ player.dob }}</td>
+        <td>{{ player.comment }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

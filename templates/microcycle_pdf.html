@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Microcycle PDF</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; }
+    h2 { text-align: center; margin-bottom: 8px; }
+    .meta { margin-bottom: 12px; font-size: 10px; }
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .box {
+      border: 1px solid #999;
+      padding: 6px;
+      min-height: 40px;
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #999; padding: 6px; vertical-align: top; }
+    th { background: #e9ecef; text-align: center; }
+    td { height: 120px; }
+  </style>
+</head>
+<body>
+  <h2>Microcycle Weekly Plan - Team {{ team }}</h2>
+  <div class="meta">Generated: {{ generated_at }}</div>
+
+  <div class="meta-grid">
+    <div class="box"><strong>Microcycle:</strong><br>{{ meta.microcycle }}</div>
+    <div class="box"><strong>From:</strong><br>{{ meta.from }}</div>
+    <div class="box"><strong>To:</strong><br>{{ meta.to }}</div>
+    <div class="box"><strong>Week:</strong><br>{{ meta.week }}</div>
+    <div class="box"><strong>Period:</strong><br>{{ meta.period }}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        {% for day in days %}
+        <th>{{ day }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <th>{{ row }}</th>
+        {% for day in days %}
+        <td>{{ data[row][day] }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

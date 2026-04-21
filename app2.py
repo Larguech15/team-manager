@@ -1,27 +1,52 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session 
+from flask import Flask, render_template, request, redirect, url_for, flash, session, make_response
 from werkzeug.utils import secure_filename
 import os
 import json
-from calendar import monthrange, month_name
+import calendar
+from calendar import monthrange
 from datetime import datetime
-from db import init_db, fetch_all_dicts, fetch_one_dict, execute
+from dateutil.relativedelta import relativedelta
+from weasyprint import HTML, CSS
+
+from db import (
+    init_db,
+    fetch_all_dicts,
+    fetch_one_dict,
+    execute,
+    execute_many,
+    json_dumps,
+    json_loads,
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
+USE_DB = bool(os.environ.get("DATABASE_URL"))
+
 UPLOAD_FOLDER = 'static/player_photos'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+# Legacy file names kept only so template flow does not break if needed
 PLAYERS_FILE = 'players.json'
 MATCHES_FILE = 'matches.json'
 ATTENDANCE_FILE = 'attendance.json'
 PRACTICE_FILE = 'practice.json'
 MIRCROCYCLE_FILE = 'microcycle.json'
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 init_db()
 
-# Helper functions
+
+# ------------------ LEGACY JSON HELPERS (fallback/local only) ------------------
+
+def get_file_path(base_filename):
+    team = session.get('selected_team')
+    if not team:
+        return os.path.join("data", base_filename)
+    filename = base_filename.replace(".json", f"{team}.json")
+    return os.path.join("data", filename)
+
+
 def load_data(base_filename):
     filepath = get_file_path(base_filename)
     if not os.path.exists(filepath):
@@ -29,14 +54,405 @@ def load_data(base_filename):
     with open(filepath, "r") as f:
         return json.load(f)
 
+
 def save_data(base_filename, data):
     filepath = get_file_path(base_filename)
+    os.makedirs(os.path.dirname(filepath), exist_ok=True)
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2)
+
+
+# ------------------ DB HELPERS ------------------
+
+def db_select(sql_pg, sql_sqlite, params=()):
+    return fetch_all_dicts(sql_pg if USE_DB else sql_sqlite, params)
+
+
+def db_select_one(sql_pg, sql_sqlite, params=()):
+    return fetch_one_dict(sql_pg if USE_DB else sql_sqlite, params)
+
+
+def db_execute(sql_pg, sql_sqlite, params=()):
+    execute(sql_pg if USE_DB else sql_sqlite, params)
+
+
+def db_execute_many(statements_pg, statements_sqlite=None):
+    if USE_DB:
+        execute_many(statements_pg)
+    else:
+        execute_many(statements_sqlite if statements_sqlite is not None else statements_pg)
+
+
+def get_team():
+    return session.get('selected_team')
+
+
+def require_team_selected():
+    if not get_team():
+        return redirect(url_for('home'))
+    return None
+
+
+# ------------------ DATA ACCESSORS ------------------
+
+def get_players():
+    team = get_team()
+    rows = db_select(
+        "SELECT * FROM players WHERE team = %s ORDER BY number",
+        "SELECT * FROM players WHERE team = ? ORDER BY number",
+        (team,)
+    )
+    return {row["number"]: row for row in rows}
+
+
+def get_player(num):
+    team = get_team()
+    return db_select_one(
+        "SELECT * FROM players WHERE team = %s AND number = %s",
+        "SELECT * FROM players WHERE team = ? AND number = ?",
+        (team, num)
+    )
+
+
+def get_matches():
+    team = get_team()
+    rows = db_select(
+        "SELECT * FROM matches WHERE team = %s ORDER BY date, time",
+        "SELECT * FROM matches WHERE team = ? ORDER BY date, time",
+        (team,)
+    )
+    return {row["match_id"]: row for row in rows}
+
+
+def get_match(match_id):
+    team = get_team()
+    return db_select_one(
+        "SELECT * FROM matches WHERE team = %s AND match_id = %s",
+        "SELECT * FROM matches WHERE team = ? AND match_id = ?",
+        (team, match_id)
+    )
+
+
+def get_daily_attendance(date_str):
+    team = get_team()
+    rows = db_select(
+        "SELECT player_number, present FROM attendance_daily WHERE team = %s AND date = %s",
+        "SELECT player_number, present FROM attendance_daily WHERE team = ? AND date = ?",
+        (team, date_str)
+    )
+    return [row["player_number"] for row in rows if int(row["present"]) == 1]
+
+
+def save_daily_attendance(date_str, present_numbers):
+    team = get_team()
+    present_set = set(present_numbers)
+
+    # delete existing rows for that day/team, then insert current
+    statements_pg = [
+        ("DELETE FROM attendance_daily WHERE team = %s AND date = %s", (team, date_str))
+    ]
+    statements_sqlite = [
+        ("DELETE FROM attendance_daily WHERE team = ? AND date = ?", (team, date_str))
+    ]
+
+    for num in present_set:
+        statements_pg.append((
+            "INSERT INTO attendance_daily (team, date, player_number, present) VALUES (%s, %s, %s, %s)",
+            (team, date_str, num, 1)
+        ))
+        statements_sqlite.append((
+            "INSERT INTO attendance_daily (team, date, player_number, present) VALUES (?, ?, ?, ?)",
+            (team, date_str, num, 1)
+        ))
+
+    db_execute_many(statements_pg, statements_sqlite)
+
+
+def get_monthly_attendance_map(month_label):
+    team = get_team()
+    rows = db_select(
+        "SELECT player_number, day, status FROM attendance_monthly WHERE team = %s AND month_label = %s",
+        "SELECT player_number, day, status FROM attendance_monthly WHERE team = ? AND month_label = ?",
+        (team, month_label)
+    )
+    result = {}
+    for row in rows:
+        num = row["player_number"]
+        day = int(row["day"])
+        result.setdefault(num, {})[f"{month_label}-{day}"] = row["status"]
+    return result
+
+
+def save_monthly_attendance_map(month_label, new_data):
+    team = get_team()
+
+    statements_pg = [
+        ("DELETE FROM attendance_monthly WHERE team = %s AND month_label = %s", (team, month_label))
+    ]
+    statements_sqlite = [
+        ("DELETE FROM attendance_monthly WHERE team = ? AND month_label = ?", (team, month_label))
+    ]
+
+    for num, records in new_data.items():
+        for key, status in records.items():
+            try:
+                day = int(str(key).split("-")[-1])
+            except Exception:
+                continue
+            statements_pg.append((
+                "INSERT INTO attendance_monthly (team, month_label, player_number, day, status) VALUES (%s, %s, %s, %s, %s)",
+                (team, month_label, num, day, status)
+            ))
+            statements_sqlite.append((
+                "INSERT INTO attendance_monthly (team, month_label, player_number, day, status) VALUES (?, ?, ?, ?, ?)",
+                (team, month_label, num, day, status)
+            ))
+
+    db_execute_many(statements_pg, statements_sqlite)
+
+
+def get_available_month_labels():
+    team = get_team()
+    rows = db_select(
+        "SELECT DISTINCT month_label FROM attendance_monthly WHERE team = %s ORDER BY month_label",
+        "SELECT DISTINCT month_label FROM attendance_monthly WHERE team = ? ORDER BY month_label",
+        (team,)
+    )
+    return [row["month_label"] for row in rows]
+
+
+def get_practice_month(month_str):
+    team = get_team()
+    rows = db_select(
+        """
+        SELECT date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end
+        FROM practice_schedule
+        WHERE team = %s AND date LIKE %s
+        ORDER BY date
+        """,
+        """
+        SELECT date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end
+        FROM practice_schedule
+        WHERE team = ? AND date LIKE ?
+        ORDER BY date
+        """,
+        (team, f"{month_str}%")
+    )
+    result = {}
+    for row in rows:
+        result[row["date"]] = {
+            "main": row.get("main") or "",
+            "secondary": row.get("secondary") or "",
+            "note_main_start": row.get("note_main_start") or "",
+            "note_main_end": row.get("note_main_end") or "",
+            "note_secondary_start": row.get("note_secondary_start") or "",
+            "note_secondary_end": row.get("note_secondary_end") or "",
+        }
+    return result
+
+
+def save_practice_month(month_str, month_schedule):
+    team = get_team()
+
+    statements_pg = [
+        ("DELETE FROM practice_schedule WHERE team = %s AND date LIKE %s", (team, f"{month_str}%"))
+    ]
+    statements_sqlite = [
+        ("DELETE FROM practice_schedule WHERE team = ? AND date LIKE ?", (team, f"{month_str}%"))
+    ]
+
+    for day, entry in month_schedule.items():
+        statements_pg.append((
+            """
+            INSERT INTO practice_schedule
+            (team, date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                team,
+                day,
+                entry.get("main", ""),
+                entry.get("secondary", ""),
+                entry.get("note_main_start", ""),
+                entry.get("note_main_end", ""),
+                entry.get("note_secondary_start", ""),
+                entry.get("note_secondary_end", ""),
+            )
+        ))
+        statements_sqlite.append((
+            """
+            INSERT INTO practice_schedule
+            (team, date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                team,
+                day,
+                entry.get("main", ""),
+                entry.get("secondary", ""),
+                entry.get("note_main_start", ""),
+                entry.get("note_main_end", ""),
+                entry.get("note_secondary_start", ""),
+                entry.get("note_secondary_end", ""),
+            )
+        ))
+
+    db_execute_many(statements_pg, statements_sqlite)
+
+
+def copy_practice_month(source_month, target_month):
+    source = get_practice_month(source_month)
+    transformed = {}
+    for date_str, entry in source.items():
+        day = date_str.split("-")[-1]
+        transformed[f"{target_month}-{day}"] = entry
+    save_practice_month(target_month, transformed)
+
+
+def get_all_practice():
+    team = get_team()
+    rows = db_select(
+        """
+        SELECT date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end
+        FROM practice_schedule
+        WHERE team = %s
+        ORDER BY date
+        """,
+        """
+        SELECT date, main, secondary, note_main_start, note_main_end, note_secondary_start, note_secondary_end
+        FROM practice_schedule
+        WHERE team = ?
+        ORDER BY date
+        """,
+        (team,)
+    )
+    result = {}
+    for row in rows:
+        month_str = row["date"][:7]
+        result.setdefault(month_str, {})
+        result[month_str][row["date"]] = {
+            "main": row.get("main") or "",
+            "secondary": row.get("secondary") or "",
+            "note_main_start": row.get("note_main_start") or "",
+            "note_main_end": row.get("note_main_end") or "",
+            "note_secondary_start": row.get("note_secondary_start") or "",
+            "note_secondary_end": row.get("note_secondary_end") or "",
+        }
+    return result
+
+
+def get_microcycle(from_date):
+    team = get_team()
+    row = db_select_one(
+        "SELECT * FROM microcycles WHERE team = %s AND from_date = %s",
+        "SELECT * FROM microcycles WHERE team = ? AND from_date = ?",
+        (team, from_date)
+    )
+    if not row:
+        return None
+    row["content_json"] = json_loads(row["content_json"])
+    return row
+
+
+def get_all_microcycles():
+    team = get_team()
+    rows = db_select(
+        "SELECT * FROM microcycles WHERE team = %s ORDER BY from_date DESC",
+        "SELECT * FROM microcycles WHERE team = ? ORDER BY from_date DESC",
+        (team,)
+    )
+    result = {}
+    for row in rows:
+        result[row["from_date"]] = {
+            "meta": {
+                "microcycle": row.get("meta_microcycle") or "",
+                "from": row.get("meta_from") or "",
+                "to": row.get("meta_to") or "",
+                "week": row.get("meta_week") or "",
+                "period": row.get("meta_period") or "",
+            },
+            **json_loads(row.get("content_json") or "{}")
+        }
+    return result
+
+
+def save_microcycle_entry(from_date, meta, table_data):
+    team = get_team()
+    content_json = json_dumps(table_data)
+
+    db_execute(
+        "DELETE FROM microcycles WHERE team = %s AND from_date = %s",
+        "DELETE FROM microcycles WHERE team = ? AND from_date = ?",
+        (team, from_date)
+    )
+
+    db_execute(
+        """
+        INSERT INTO microcycles
+        (team, from_date, meta_microcycle, meta_from, meta_to, meta_week, meta_period, content_json)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        """
+        INSERT INTO microcycles
+        (team, from_date, meta_microcycle, meta_from, meta_to, meta_week, meta_period, content_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            team,
+            from_date,
+            meta.get("microcycle", ""),
+            meta.get("from", ""),
+            meta.get("to", ""),
+            meta.get("week", ""),
+            meta.get("period", ""),
+            content_json
+        )
+    )
+
+
+# ------------------ AUTH ------------------
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+
+        admin_username = os.environ.get("ADMIN_USERNAME", "ziad")
+        admin_password = os.environ.get("ADMIN_PASSWORD", "1971")
+
+        if username == admin_username and password == admin_password:
+            session["logged_in"] = True
+            return redirect(url_for("home"))
+        else:
+            flash("Invalid username or password", "danger")
+
+    return render_template("login.html")
+
+
+@app.before_request
+def require_login():
+    allowed_routes = {"login", "static"}
+    if request.endpoint is None:
+        return
+    if request.endpoint in allowed_routes:
+        return
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+
+# ------------------ TEAM ------------------
 
 @app.route('/')
 def home():
     return render_template('choose_team.html')
+
 
 @app.route('/set_team', methods=['POST'])
 def set_team():
@@ -46,35 +462,33 @@ def set_team():
         return redirect(url_for('team_dashboard'))
     return redirect(url_for('home'))
 
+
 @app.route('/team_dashboard')
 def team_dashboard():
     if not session.get('selected_team'):
         return redirect(url_for('home'))
     return render_template('index.html', team=session['selected_team'])
 
-def get_file_path(base_filename):
-    team = session.get('selected_team')
-    if not team:
-        return os.path.join("data", base_filename)
-    filename = base_filename.replace(".json", f"{team}.json")
-    return os.path.join("data", filename)
+
+# ------------------ PLAYERS ------------------
 
 @app.route('/players')
 def list_players():
-    team = session.get('selected_team')
-    rows = fetch_all_dicts(
-        "SELECT * FROM players WHERE team = %s ORDER BY number" if os.environ.get("DATABASE_URL")
-        else "SELECT * FROM players WHERE team = ? ORDER BY number",
-        (team,)
-    )
-    players = {row["number"]: row for row in rows}
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+    players = get_players()
     return render_template('players.html', players=players)
 
 
 @app.route('/add_player', methods=['GET', 'POST'])
 def add_player():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
     if request.method == 'POST':
-        team = session.get('selected_team')
+        team = get_team()
         num = request.form['num'].strip()
         photo = request.files.get('photo')
         photo_filename = ''
@@ -84,25 +498,27 @@ def add_player():
             photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             photo_filename = filename
 
-        query = """
+        db_execute(
+            """
             INSERT INTO players (team, number, name, height, weight, position, dob, comment, photo)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """ if os.environ.get("DATABASE_URL") else """
+            """,
+            """
             INSERT INTO players (team, number, name, height, weight, position, dob, comment, photo)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        execute(query, (
-            team,
-            num,
-            request.form['name'].strip(),
-            request.form.get('height', '').strip(),
-            request.form.get('weight', '').strip(),
-            request.form.get('position', '').strip(),
-            request.form.get('dob', '').strip(),
-            request.form.get('comment', '').strip(),
-            photo_filename
-        ))
+            """,
+            (
+                team,
+                num,
+                request.form['name'].strip(),
+                request.form.get('height', '').strip(),
+                request.form.get('weight', '').strip(),
+                request.form.get('position', '').strip(),
+                request.form.get('dob', '').strip(),
+                request.form.get('comment', '').strip(),
+                photo_filename
+            )
+        )
 
         flash('Player added successfully')
         return redirect(url_for('list_players'))
@@ -112,12 +528,12 @@ def add_player():
 
 @app.route('/edit_player/<string:num>', methods=['GET', 'POST'])
 def edit_player(num):
-    team = session.get('selected_team')
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
 
-    select_query = "SELECT * FROM players WHERE team = %s AND number = %s" if os.environ.get("DATABASE_URL") \
-        else "SELECT * FROM players WHERE team = ? AND number = ?"
-
-    player = fetch_one_dict(select_query, (team, num))
+    team = get_team()
+    player = get_player(num)
 
     if not player:
         return "Player not found", 404
@@ -131,27 +547,29 @@ def edit_player(num):
             photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             photo_filename = filename
 
-        update_query = """
+        db_execute(
+            """
             UPDATE players
             SET name = %s, height = %s, weight = %s, position = %s, dob = %s, comment = %s, photo = %s
             WHERE team = %s AND number = %s
-        """ if os.environ.get("DATABASE_URL") else """
+            """,
+            """
             UPDATE players
             SET name = ?, height = ?, weight = ?, position = ?, dob = ?, comment = ?, photo = ?
             WHERE team = ? AND number = ?
-        """
-
-        execute(update_query, (
-            request.form['name'].strip(),
-            request.form.get('height', '').strip(),
-            request.form.get('weight', '').strip(),
-            request.form.get('position', '').strip(),
-            request.form.get('dob', '').strip(),
-            request.form.get('comment', '').strip(),
-            photo_filename,
-            team,
-            num
-        ))
+            """,
+            (
+                request.form['name'].strip(),
+                request.form.get('height', '').strip(),
+                request.form.get('weight', '').strip(),
+                request.form.get('position', '').strip(),
+                request.form.get('dob', '').strip(),
+                request.form.get('comment', '').strip(),
+                photo_filename,
+                team,
+                num
+            )
+        )
 
         flash('Player updated')
         return redirect(url_for('list_players'))
@@ -161,48 +579,60 @@ def edit_player(num):
 
 @app.route('/delete_player/<string:num>', methods=['POST'])
 def delete_player(num):
-    team = session.get('selected_team')
-    delete_query = "DELETE FROM players WHERE team = %s AND number = %s" if os.environ.get("DATABASE_URL") \
-        else "DELETE FROM players WHERE team = ? AND number = ?"
-    execute(delete_query, (team, num))
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    team = get_team()
+    db_execute(
+        "DELETE FROM players WHERE team = %s AND number = %s",
+        "DELETE FROM players WHERE team = ? AND number = ?",
+        (team, num)
+    )
     flash('Player deleted')
     return redirect(url_for('list_players'))
 
+
+# ------------------ MATCHES ------------------
+
 @app.route('/matches')
 def list_matches():
-    team = session.get('selected_team')
-    rows = fetch_all_dicts(
-        "SELECT * FROM matches WHERE team = %s ORDER BY date, time" if os.environ.get("DATABASE_URL")
-        else "SELECT * FROM matches WHERE team = ? ORDER BY date, time",
-        (team,)
-    )
-    matches = {row["match_id"]: row for row in rows}
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+    matches = get_matches()
     return render_template('matches.html', matches=matches)
 
 
 @app.route('/add_match', methods=['GET', 'POST'])
 def add_match():
-    if request.method == 'POST':
-        team = session.get('selected_team')
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
 
-        query = """
+    if request.method == 'POST':
+        team = get_team()
+
+        db_execute(
+            """
             INSERT INTO matches (team, match_id, opponent, date, time, venue, competition, score)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        """ if os.environ.get("DATABASE_URL") else """
+            """,
+            """
             INSERT INTO matches (team, match_id, opponent, date, time, venue, competition, score)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """
-
-        execute(query, (
-            team,
-            request.form['match_id'].strip(),
-            request.form['opponent'].strip(),
-            request.form['date'],
-            request.form['time'],
-            request.form.get('venue', '').strip(),
-            request.form.get('competition', '').strip(),
-            'TBD'
-        ))
+            """,
+            (
+                team,
+                request.form['match_id'].strip(),
+                request.form['opponent'].strip(),
+                request.form['date'],
+                request.form['time'],
+                request.form.get('venue', '').strip(),
+                request.form.get('competition', '').strip(),
+                'TBD'
+            )
+        )
 
         flash('Match added successfully')
         return redirect(url_for('list_matches'))
@@ -212,37 +642,39 @@ def add_match():
 
 @app.route('/edit_match/<match_id>', methods=['GET', 'POST'])
 def edit_match(match_id):
-    team = session.get('selected_team')
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
 
-    select_query = "SELECT * FROM matches WHERE team = %s AND match_id = %s" if os.environ.get("DATABASE_URL") \
-        else "SELECT * FROM matches WHERE team = ? AND match_id = ?"
-
-    match = fetch_one_dict(select_query, (team, match_id))
+    team = get_team()
+    match = get_match(match_id)
 
     if not match:
         return "Match not found", 404
 
     if request.method == 'POST':
-        update_query = """
+        db_execute(
+            """
             UPDATE matches
             SET opponent = %s, date = %s, time = %s, venue = %s, competition = %s, score = %s
             WHERE team = %s AND match_id = %s
-        """ if os.environ.get("DATABASE_URL") else """
+            """,
+            """
             UPDATE matches
             SET opponent = ?, date = ?, time = ?, venue = ?, competition = ?, score = ?
             WHERE team = ? AND match_id = ?
-        """
-
-        execute(update_query, (
-            request.form['opponent'].strip(),
-            request.form['date'],
-            request.form['time'],
-            request.form.get('venue', '').strip(),
-            request.form.get('competition', '').strip(),
-            request.form.get('score', '').strip(),
-            team,
-            match_id
-        ))
+            """,
+            (
+                request.form['opponent'].strip(),
+                request.form['date'],
+                request.form['time'],
+                request.form.get('venue', '').strip(),
+                request.form.get('competition', '').strip(),
+                request.form.get('score', '').strip(),
+                team,
+                match_id
+            )
+        )
 
         flash('Match updated')
         return redirect(url_for('list_matches'))
@@ -252,54 +684,67 @@ def edit_match(match_id):
 
 @app.route('/delete_match/<match_id>', methods=['POST'])
 def delete_match(match_id):
-    team = session.get('selected_team')
-    delete_query = "DELETE FROM matches WHERE team = %s AND match_id = %s" if os.environ.get("DATABASE_URL") \
-        else "DELETE FROM matches WHERE team = ? AND match_id = ?"
-    execute(delete_query, (team, match_id))
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    team = get_team()
+    db_execute(
+        "DELETE FROM matches WHERE team = %s AND match_id = %s",
+        "DELETE FROM matches WHERE team = ? AND match_id = ?",
+        (team, match_id)
+    )
     flash('Match deleted')
     return redirect(url_for('list_matches'))
 
+
 @app.route('/edit_score/<match_id>', methods=['GET', 'POST'])
 def edit_score(match_id):
-    matches_file = get_file_path("matches.json")
-    matches = load_data(MATCHES_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    team = get_team()
+
     if request.method == 'POST':
         new_score = request.form['score']
-        matches[match_id]['score'] = new_score
-        save_data(MATCHES_FILE, matches)
+        db_execute(
+            "UPDATE matches SET score = %s WHERE team = %s AND match_id = %s",
+            "UPDATE matches SET score = ? WHERE team = ? AND match_id = ?",
+            (new_score, team, match_id)
+        )
         flash('Score updated')
         return redirect(url_for('list_matches'))
-    match = matches.get(match_id)
+
+    match = get_match(match_id)
     return render_template('edit_score.html', match_id=match_id, match=match)
+
+
+# ------------------ ATTENDANCE ------------------
 
 @app.route('/attendance', methods=['GET', 'POST'])
 def attendance():
-    players_file = get_file_path("players.json")
-    attendance_file = get_file_path("attendance.json")
-    players = load_data(PLAYERS_FILE)
-    attendance_data = load_data(ATTENDANCE_FILE)
-    available_months = [key.replace("monthly:", "") for key in attendance_data.keys() if key.startswith("monthly:")]
-    
-    from datetime import datetime
-    import calendar
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
+    available_months = get_available_month_labels()
 
     selected_month = request.values.get("month", "").strip()
-    # Default to current month if none
     if not selected_month:
-            selected_month = datetime.now().strftime("%B %Y")
-    month_key= f"monthly:{selected_month}"
-    edit_mode= request.args.get("edit")== "1"
-    # Extract number of days in the month
+        selected_month = datetime.now().strftime("%B %Y")
+
+    month_key = f"monthly:{selected_month}"
+    edit_mode = request.args.get("edit") == "1"
+
     try:
-        month_name, year = selected_month.split()
-        month_number = list(calendar.month_name).index(month_name)
-        year = int(year)
+        month_name_text, year_text = selected_month.split()
+        month_number = list(calendar.month_name).index(month_name_text)
+        year = int(year_text)
         days_in_month = calendar.monthrange(year, month_number)[1]
-    except:
-        days_in_month = 31 # fallback
-        edit_mode = request.args.get("edit") == "1"
-        saved_attendance = {}
-        month_key = f"monthly:{selected_month}"
+    except Exception:
+        days_in_month = 31
 
     if request.method == 'POST' and selected_month:
         new_data = {}
@@ -307,15 +752,15 @@ def attendance():
             for day in range(1, days_in_month + 1):
                 key = f"p{num}d{day}"
                 val = request.form.get(key)
-                if val:
+                if val in {"P", "A"}:
                     new_data.setdefault(num, {})[f"{selected_month}-{day}"] = val
-        attendance_data[month_key] = new_data
-        save_data(ATTENDANCE_FILE, attendance_data)
+
+        save_monthly_attendance_map(selected_month, new_data)
         flash("Attendance saved!")
         saved_attendance = new_data
         edit_mode = False
-    elif selected_month:
-        saved_attendance = attendance_data.get(month_key, {})
+    else:
+        saved_attendance = get_monthly_attendance_map(selected_month)
 
     stats = {}
     for num, player in players.items():
@@ -339,19 +784,26 @@ def attendance():
             'percent': percent
         }
 
-    return render_template("attendance.html",
-                           players=players,
-                           selected_month=selected_month,
-                           saved_attendance=saved_attendance,
-                           edit_mode=edit_mode,
-                           stats=stats,
-                           days_in_month=days_in_month,
-                           month_key=month_key,
-                           available_months=available_months)
+    return render_template(
+        "attendance.html",
+        players=players,
+        selected_month=selected_month,
+        saved_attendance=saved_attendance,
+        edit_mode=edit_mode,
+        stats=stats,
+        days_in_month=days_in_month,
+        month_key=month_key,
+        available_months=available_months
+    )
+
 
 @app.route('/monthly_attendance', methods=['GET', 'POST'])
 def monthly_attendance():
-    players = load_data(PLAYERS_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
 
     if request.method == 'POST':
         month = request.form.get("month", "").strip()
@@ -361,7 +813,7 @@ def monthly_attendance():
 
         try:
             month_text, year_text = month.split()
-            month_number = list(__import__("calendar").month_name).index(month_text)
+            month_number = list(calendar.month_name).index(month_text)
             year = int(year_text)
             days_in_month = monthrange(year, month_number)[1]
         except Exception:
@@ -376,76 +828,130 @@ def monthly_attendance():
                 if status in {"P", "A"}:
                     attendance_data.setdefault(num, {})[f"{month}-{day}"] = status
 
-        existing = load_data(ATTENDANCE_FILE)
-        existing[f"monthly:{month}"] = attendance_data
-        save_data(ATTENDANCE_FILE, existing)
+        save_monthly_attendance_map(month, attendance_data)
         flash("Monthly attendance saved!")
         return redirect(url_for('monthly_attendance'))
 
     return render_template("monthly_attendance.html", players=players)
 
+
 @app.route('/mark_attendance', methods=['GET', 'POST'])
 def mark_attendance():
-    players_file = get_file_path("players.json")
-    players = load_data(PLAYERS_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
     if request.method == 'POST':
         date = request.form['date']
-        attendance = load_data(ATTENDANCE_FILE)
-        attendance[date] = request.form.getlist('present')
-        save_data(ATTENDANCE_FILE, attendance)
+        present = request.form.getlist('present')
+        save_daily_attendance(date, present)
         flash('Attendance recorded')
         return redirect(url_for('view_attendance'))
     return render_template('mark_attendance.html', players=players)
 
+
 @app.route('/edit_attendance/<date>', methods=['GET', 'POST'])
 def edit_attendance(date):
-    players_file = get_file_path("players.json")
-    attendance_file = get_file_path("attendance.json")
-    attendance = load_data(ATTENDANCE_FILE)
-    players = load_data(PLAYERS_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
 
     if request.method == 'POST':
-        attendance[date] = request.form.getlist('present')
-        save_data(ATTENDANCE_FILE, attendance)
+        present = request.form.getlist('present')
+        save_daily_attendance(date, present)
         flash('Attendance updated')
         return redirect(url_for('view_attendance'))
 
-    present = attendance.get(date, [])
+    present = get_daily_attendance(date)
     return render_template('edit_attendance.html', date=date, players=players, present=present)
+
 
 @app.route('/delete_attendance/<date>', methods=['POST'])
 def delete_attendance(date):
-    attendance_file = get_file_path("attendance.json")
-    attendance = load_data(ATTENDANCE_FILE)
-    if date in attendance:
-        del attendance[date]
-        save_data(ATTENDANCE_FILE, attendance)
-        flash('Attendance deleted')
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    team = get_team()
+    db_execute(
+        "DELETE FROM attendance_daily WHERE team = %s AND date = %s",
+        "DELETE FROM attendance_daily WHERE team = ? AND date = ?",
+        (team, date)
+    )
+    flash('Attendance deleted')
     return redirect(url_for('view_attendance'))
+
+
+@app.route('/view_attendance')
+def view_attendance():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    players = get_players()
+    team = get_team()
+    rows = db_select(
+        "SELECT date, player_number, present FROM attendance_daily WHERE team = %s ORDER BY date DESC, player_number",
+        "SELECT date, player_number, present FROM attendance_daily WHERE team = ? ORDER BY date DESC, player_number",
+        (team,)
+    )
+
+    grouped = {}
+    for row in rows:
+        date = row["date"]
+        grouped.setdefault(date, [])
+        if int(row["present"]) == 1:
+            grouped[date].append(row["player_number"])
+
+    # lightweight page without new template dependency
+    return render_template(
+        'view_monthly_attendance.html',
+        players=players,
+        attendance={},
+        months=[],
+        selected_month=None,
+        daily_grouped=grouped,
+        show_daily_only=True
+    )
+
 
 @app.route('/view_monthly_attendance')
 def view_monthly_attendance():
-    players_file = get_file_path("players.json")
-    attendance_file = get_file_path("attendance.json")
-    players = load_data(PLAYERS_FILE)
-    attendance = load_data(ATTENDANCE_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
 
-    months = [key for key in attendance if key.startswith('monthly:')]
+    players = get_players()
+    months_raw = get_available_month_labels()
+    months = [f"monthly:{m}" for m in months_raw]
     selected_month = request.args.get('month', months[0] if months else None)
-    data = attendance.get(selected_month, {}) if selected_month else {}
+    if selected_month:
+        month_label = selected_month.replace('monthly:', '')
+        data = get_monthly_attendance_map(month_label)
+    else:
+        data = {}
 
-    return render_template('view_monthly_attendance.html',
-                           players=players,
-                           attendance=data,
-                           months=months,
-                           selected_month=selected_month)
+    return render_template(
+        'view_monthly_attendance.html',
+        players=players,
+        attendance=data,
+        months=months,
+        selected_month=selected_month
+    )
 
-from dateutil.relativedelta import relativedelta
+
+# ------------------ PRACTICE ------------------
 
 @app.route("/practice", methods=["GET", "POST"])
 def practice():
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    practice_data = get_all_practice()
     selected_month = request.form.get("month") or request.args.get("month") or datetime.now().strftime("%Y-%m")
     edit_mode = request.args.get("edit") == "1"
     year, month = map(int, selected_month.split("-"))
@@ -459,14 +965,14 @@ def practice():
     week = [None] * datetime(year, month, 1).weekday()
 
     activity_filter = request.args.get("filter")
-    raw_schedule = practice_data.get(selected_month, {})
+    raw_schedule = get_practice_month(selected_month)
     schedule = {}
 
     if activity_filter:
         for day, entry in raw_schedule.items():
             if entry.get("main") == activity_filter or entry.get("secondary") == activity_filter:
                 schedule[day] = entry
-    else:   
+    else:
         schedule = raw_schedule
 
     for day in range(1, total_days + 1):
@@ -482,7 +988,6 @@ def practice():
         calendar_grid.append(week)
 
     today = datetime.now().strftime("%Y-%m-%d")
-    
 
     overall_summary = {'GYM': 0, 'VOLLEYBALL': 0, 'FRIENDLY MATCH': 0, 'REST': 0, 'TOURNAMENT': 0}
     for month_data in practice_data.values():
@@ -493,26 +998,31 @@ def practice():
                 if entry.get("secondary") in overall_summary:
                     overall_summary[entry["secondary"]] += 1
 
-    return render_template("practice.html",
-                           selected_month=selected_month,
-                           schedule=schedule,
-                           calendar_grid=calendar_grid,
-                           month_days=total_days,
-                           week_days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-                           edit_mode=edit_mode,
-                           today=today,
-                           prev_month=prev_month,
-                           next_month=next_month,
-                           overall_summary=overall_summary,
-                           activity_filter=activity_filter)
+    return render_template(
+        "practice.html",
+        selected_month=selected_month,
+        schedule=schedule,
+        calendar_grid=calendar_grid,
+        month_days=total_days,
+        week_days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        edit_mode=edit_mode,
+        today=today,
+        prev_month=prev_month,
+        next_month=next_month,
+        overall_summary=overall_summary,
+        activity_filter=activity_filter
+    )
+
 
 @app.route("/practice/save", methods=["POST"])
 def save_practice():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
     selected_month = request.form.get("month")
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
     month_schedule = {}
-    
+
     for key in request.form:
         if key.startswith("main_") or key.startswith("secondary_"):
             day = key.split("_", 1)[1]
@@ -532,43 +1042,38 @@ def save_practice():
                     "note_secondary_end": note_secondary_end
                 }
 
-    practice_data[selected_month] = month_schedule
-    save_data(PRACTICE_FILE, practice_data)
+    save_practice_month(selected_month, month_schedule)
     flash("Practice schedule saved successfully!")
     return redirect(url_for("practice", month=selected_month))
 
+
 @app.route("/practice/repeat", methods=["POST"])
 def repeat_practice():
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
     source_month = request.form.get("source_month")
     target_month = request.form.get("target_month")
     if source_month and target_month:
-        practice_file = get_file_path("practice.json")
-        practice_data = load_data(PRACTICE_FILE)
-        if source_month in practice_data:
-            practice_data[target_month] = practice_data[source_month]
-            save_data(PRACTICE_FILE, practice_data)
-            flash(f"Copied schedule from {source_month} to {target_month}")
+        copy_practice_month(source_month, target_month)
+        flash(f"Copied schedule from {source_month} to {target_month}")
     return redirect(url_for("practice"))
 
-from flask import make_response
-from weasyprint import HTML, CSS
-from datetime import datetime
 
 @app.route("/practice/export_pdf/<month>")
 def export_practice_pdf(month):
-    from calendar import monthrange
-    from datetime import datetime
-    from dateutil.relativedelta import relativedelta
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
-    schedule = practice_data.get(month, {})
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    schedule = get_practice_month(month)
 
     year, m = map(int, month.split("-"))
     total_days = monthrange(year, m)[1]
     first_day = datetime(year, m, 1)
 
-    # Build calendar grid
-    week = [None] * first_day.weekday()  # Fill in leading blanks
+    week = [None] * first_day.weekday()
     calendar_grid = []
     for day in range(1, total_days + 1):
         date_str = f"{month}-{str(day).zfill(2)}"
@@ -581,11 +1086,10 @@ def export_practice_pdf(month):
             week.append(None)
         calendar_grid.append(week)
 
-    summary = {key: 0 for key in['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT']}
+    summary = {key: 0 for key in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT']}
     for entry in schedule.values():
         main = entry.get("main", [])
         secondary = entry.get("secondary", [])
-
         main = [main] if isinstance(main, str) else main
         secondary = [secondary] if isinstance(secondary, str) else secondary
 
@@ -595,6 +1099,7 @@ def export_practice_pdf(month):
         for act in secondary:
             if act in summary:
                 summary[act] += 1
+
     total = sum(summary.values())
 
     html = render_template(
@@ -609,28 +1114,35 @@ def export_practice_pdf(month):
     )
 
     pdf = HTML(string=html).write_pdf(stylesheets=[
-    CSS(string='@page { size: A4 landscape; margin: 10mm; }')
-        ])
+        CSS(string='@page { size: A4 landscape; margin: 10mm; }')
+    ])
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
     response.headers['Content-Disposition'] = f'attachment;filename=practice_{month}.pdf'
     return response
 
+
 @app.route("/practice/export/<month>")
 def export_practice(month):
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
-    month_data = practice_data.get(month, {})
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+    month_data = get_practice_month(month)
     return json.dumps(month_data, indent=2), 200, {
         'Content-Type': 'application/json',
         'Content-Disposition': f'attachment; filename=practice_{month}.json'
     }
 
 
+# ------------------ MICROCYCLE ------------------
+
 @app.route("/microcycle", methods=["GET"])
 def microcycle():
-    microcycle_file = get_file_path("microcycle.json")
-    all_data = load_data("microcycle.json")
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    all_data = get_all_microcycles()
     selected_key = request.args.get("week") or next(iter(all_data), "")
 
     data = all_data.get(selected_key, {})
@@ -639,16 +1151,23 @@ def microcycle():
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     table = {row: {day: data.get(row, {}).get(day, "") for day in days} for row in rows}
 
-    return render_template("microcycle.html",
-        data=table, days=days, rows=rows, meta=meta,
+    return render_template(
+        "microcycle.html",
+        data=table,
+        days=days,
+        rows=rows,
+        meta=meta,
         all_keys=sorted(all_data.keys(), reverse=True),
         selected_key=selected_key
     )
 
+
 @app.route("/microcycle/save", methods=["POST"])
 def save_microcycle():
-    microcycle_file = get_file_path("microcycle.json")
-    all_data = load_data("microcycle.json")
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
     days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
     rows = ["Morning", "Afternoon"]
 
@@ -666,18 +1185,21 @@ def save_microcycle():
         return redirect(url_for("microcycle"))
 
     new_entry = {row: {day: request.form.get(f"{row}_{day}", "") for day in days} for row in rows}
-    new_entry["meta"] = meta
-
-    all_data[from_date] = new_entry
-    save_data("microcycle.json", all_data)
+    save_microcycle_entry(from_date, meta, new_entry)
 
     flash(f"Saved microcycle for week starting {from_date}")
     return redirect(url_for("microcycle", week=from_date))
 
+
+# ------------------ SEASON ------------------
+
 @app.route("/season")
 def season():
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    practice_data = get_all_practice()
     start_month = datetime(2025, 6, 1)
     end_month = datetime(2026, 5, 1)
 
@@ -691,7 +1213,7 @@ def season():
 
         for day in range(1, 32):
             if day > days_in_month:
-                month_schedule.append("")  # pad empty cells
+                month_schedule.append("")
                 continue
 
             date_str = f"{month_str}-{day:02d}"
@@ -718,13 +1240,14 @@ def season():
     month_data = list(zip(month_labels, months))
     return render_template("season.html", month_data=month_data)
 
-from flask import make_response
-from weasyprint import HTML, CSS
 
 @app.route("/season/export_pdf")
 def export_season_pdf():
-    practice_file = get_file_path("practice.json")
-    practice_data = load_data(PRACTICE_FILE)
+    no_team = require_team_selected()
+    if no_team:
+        return no_team
+
+    practice_data = get_all_practice()
     start_month = datetime(2025, 6, 1)
     end_month = datetime(2026, 5, 1)
 
@@ -738,7 +1261,7 @@ def export_season_pdf():
 
         for day in range(1, 32):
             if day > days_in_month:
-                row.append("")  # pad blank
+                row.append("")
                 continue
 
             date_str = f"{month_str}-{day:02d}"
@@ -773,36 +1296,6 @@ def export_season_pdf():
     response.headers['Content-Disposition'] = 'attachment; filename=season_overview.pdf'
     return response
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "ziad")
-        ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1971")
-
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-            session["logged_in"] = True
-            return redirect(url_for("home"))
-        else:
-            flash("Invalid username or password", "danger")
-
-    return render_template("login.html")
-@app.before_request
-def require_login():
-    allowed_routes = {"login", "static"}
-    if request.endpoint is None:
-        return
-    if request.endpoint in allowed_routes:
-        return
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=os.environ.get("PORT", 5000))

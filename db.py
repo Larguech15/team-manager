@@ -1,4 +1,5 @@
 import os
+import json
 import sqlite3
 from contextlib import contextmanager
 
@@ -18,7 +19,7 @@ def get_connection():
 
     if database_url:
         if psycopg is None:
-            raise RuntimeError("psycopg is not installed")
+            raise RuntimeError("psycopg is not installed. Add psycopg[binary] to requirements.txt")
         conn = psycopg.connect(database_url)
         try:
             yield conn
@@ -38,6 +39,7 @@ def init_db():
         cur = conn.cursor()
 
         id_sql = "SERIAL PRIMARY KEY" if using_postgres() else "INTEGER PRIMARY KEY AUTOINCREMENT"
+        text_unique = ""  # handled with explicit UNIQUE constraints below
 
         cur.execute(f"""
             CREATE TABLE IF NOT EXISTS players (
@@ -50,7 +52,8 @@ def init_db():
                 position TEXT,
                 dob TEXT,
                 comment TEXT,
-                photo TEXT
+                photo TEXT,
+                UNIQUE(team, number)
             )
         """)
 
@@ -64,7 +67,61 @@ def init_db():
                 time TEXT,
                 venue TEXT,
                 competition TEXT,
-                score TEXT
+                score TEXT,
+                UNIQUE(team, match_id)
+            )
+        """)
+
+        cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS attendance_daily (
+                id {id_sql},
+                team TEXT NOT NULL,
+                date TEXT NOT NULL,
+                player_number TEXT NOT NULL,
+                present INTEGER NOT NULL,
+                UNIQUE(team, date, player_number)
+            )
+        """)
+
+        cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS attendance_monthly (
+                id {id_sql},
+                team TEXT NOT NULL,
+                month_label TEXT NOT NULL,
+                player_number TEXT NOT NULL,
+                day INTEGER NOT NULL,
+                status TEXT NOT NULL,
+                UNIQUE(team, month_label, player_number, day)
+            )
+        """)
+
+        cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS practice_schedule (
+                id {id_sql},
+                team TEXT NOT NULL,
+                date TEXT NOT NULL,
+                main TEXT,
+                secondary TEXT,
+                note_main_start TEXT,
+                note_main_end TEXT,
+                note_secondary_start TEXT,
+                note_secondary_end TEXT,
+                UNIQUE(team, date)
+            )
+        """)
+
+        cur.execute(f"""
+            CREATE TABLE IF NOT EXISTS microcycles (
+                id {id_sql},
+                team TEXT NOT NULL,
+                from_date TEXT NOT NULL,
+                meta_microcycle TEXT,
+                meta_from TEXT,
+                meta_to TEXT,
+                meta_week TEXT,
+                meta_period TEXT,
+                content_json TEXT NOT NULL,
+                UNIQUE(team, from_date)
             )
         """)
 
@@ -102,3 +159,19 @@ def execute(query, params=()):
         cur = conn.cursor()
         cur.execute(query, params)
         conn.commit()
+
+
+def execute_many(statements):
+    with get_connection() as conn:
+        cur = conn.cursor()
+        for query, params in statements:
+            cur.execute(query, params)
+        conn.commit()
+
+
+def json_dumps(data):
+    return json.dumps(data, ensure_ascii=False)
+
+
+def json_loads(text):
+    return json.loads(text) if text else {}

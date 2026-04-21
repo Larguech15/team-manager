@@ -1200,8 +1200,8 @@ def season():
         return no_team
 
     practice_data = get_all_practice()
-    start_month = datetime(2025, 6, 1)
-    end_month = datetime(2026, 5, 1)
+    start_month = datetime(2026, 4, 1)
+    end_month = datetime(2026, 8, 1)
 
     months = []
     month_labels = []
@@ -1213,7 +1213,7 @@ def season():
 
         for day in range(1, 32):
             if day > days_in_month:
-                month_schedule.append("")
+                month_schedule.append({"activity": "", "date": "", "month": month_str})
                 continue
 
             date_str = f"{month_str}-{day:02d}"
@@ -1231,7 +1231,11 @@ def season():
             elif main == "TOURNAMENT" or secondary == "TOURNAMENT":
                 activity = "tournament"
 
-            month_schedule.append(activity)
+            month_schedule.append({
+                "activity": activity,
+                "date": date_str,
+                "month": month_str
+            })
 
         months.append(month_schedule)
         month_labels.append(start_month.strftime("%B %Y"))
@@ -1248,8 +1252,8 @@ def export_season_pdf():
         return no_team
 
     practice_data = get_all_practice()
-    start_month = datetime(2025, 6, 1)
-    end_month = datetime(2026, 5, 1)
+    start_month = datetime(2026, 4, 1)
+    end_month = datetime(2026, 8, 1)
 
     months = []
     labels = []

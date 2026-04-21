@@ -3,6 +3,7 @@
 {% block title %}Monthly Attendance{% endblock %}
 {% block content %}
 <h2 class="text-center mb-4">Monthly Attendance</h2>
+<a href="{{ url_for('export_attendance_pdf', month=selected_month) }}" class="btn btn-outline-secondary mb-3">Export PDF</a>
 
 <!-- Month Selector -->
 <form method="get" class="text-center mb-4">

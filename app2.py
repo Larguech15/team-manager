@@ -6,7 +6,7 @@ from calendar import monthrange, month_name
 from datetime import datetime
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
 UPLOAD_FOLDER = 'static/player_photos'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -277,18 +277,29 @@ def attendance():
 
 @app.route('/monthly_attendance', methods=['GET', 'POST'])
 def monthly_attendance():
-    players_file = get_file_path("players.json")
     players = load_data(PLAYERS_FILE)
 
     if request.method == 'POST':
-        month = request.form.get("month", "unknown")
-        attendance_data = {}
+        month = request.form.get("month", "").strip()
+        if not month:
+            flash("Month is required.", "danger")
+            return redirect(url_for('monthly_attendance'))
 
+        try:
+            month_text, year_text = month.split()
+            month_number = list(__import__("calendar").month_name).index(month_text)
+            year = int(year_text)
+            days_in_month = monthrange(year, month_number)[1]
+        except Exception:
+            flash("Use format like June 2025.", "danger")
+            return redirect(url_for('monthly_attendance'))
+
+        attendance_data = {}
         for num in players:
             for day in range(1, days_in_month + 1):
                 key = f"p{num}d{day}"
                 status = request.form.get(key)
-                if status:
+                if status in {"P", "A"}:
                     attendance_data.setdefault(num, {})[f"{month}-{day}"] = status
 
         existing = load_data(ATTENDANCE_FILE)
@@ -694,17 +705,24 @@ def login():
         username = request.form["username"]
         password = request.form["password"]
 
-        if username == "ziad" and password == "1971":
+        ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "ziad")
+        ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1971")
+
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session["logged_in"] = True
-            return redirect(url_for("team_dashboard"))  # or whatever your main page is
+            return redirect(url_for("home"))
         else:
             flash("Invalid username or password", "danger")
 
     return render_template("login.html")
 @app.before_request
 def require_login():
-    allowed_routes = ["login", "static"]
-    if not session.get("logged_in") and request.endpoint not in allowed_routes:
+    allowed_routes = {"login", "static"}
+    if request.endpoint is None:
+        return
+    if request.endpoint in allowed_routes:
+        return
+    if not session.get("logged_in"):
         return redirect(url_for("login"))
 
 @app.route("/logout")

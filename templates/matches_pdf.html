@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Matches PDF</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 11px; }
+    h2 { text-align: center; margin-bottom: 8px; }
+    .meta { margin-bottom: 12px; font-size: 10px; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #999; padding: 6px; text-align: center; vertical-align: middle; }
+    th { background: #e9ecef; }
+  </style>
+</head>
+<body>
+  <h2>Matches List - Team {{ team }}</h2>
+  <div class="meta">Generated: {{ generated_at }}</div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Time</th>
+        <th>Opponent</th>
+        <th>Venue</th>
+        <th>Competition</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for match_id, match in matches.items() %}
+      <tr>
+        <td>{{ match_id }}</td>
+        <td>{{ match.date }}</td>
+        <td>{{ match.time }}</td>
+        <td>{{ match.opponent }}</td>
+        <td>{{ match.venue }}</td>
+        <td>{{ match.competition }}</td>
+        <td>{{ match.score }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

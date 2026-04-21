@@ -7,6 +7,7 @@ from calendar import monthrange
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from weasyprint import HTML, CSS
+from zoneinfo import ZoneInfo
 
 from db import (
     init_db,
@@ -987,7 +988,7 @@ def practice():
             week.append(None)
         calendar_grid.append(week)
 
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%Y-%m-%d")
 
     overall_summary = {'GYM': 0, 'VOLLEYBALL': 0, 'FRIENDLY MATCH': 0, 'REST': 0, 'TOURNAMENT': 0}
     for month_data in practice_data.values():

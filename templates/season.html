@@ -9,8 +9,6 @@
   </a>
 </div>
 
-<table class="table table-bordered text-center table-sm" style="font-size: 10px;">
-
 <table class="table table-bordered text-center">
   <thead class="table-secondary">
     <tr>
@@ -22,21 +20,30 @@
   </thead>
   <tbody>
     {% for label, month in month_data %}
-  <tr>
-    <td style="font-size: 11px;"><strong>{{ label }}</td>
-    {% for activity in month %}
-      {% set color = {
-        "practice": "bg-primary text-white",
-        "friendly": "bg-warning text-dark",
-        "rest": "bg-danger text-white",
-        "tournament": "bg-success text-white"
-      }.get(activity, "bg-light") %}
-      <td class="{{ color }}" style="padding: 2px; width: 20px; height: 20px;"></td>
+    <tr>
+      <td style="font-size: 11px;"><strong>{{ label }}</strong></td>
+
+      {% for cell in month %}
+        {% set color = {
+          "practice": "bg-primary text-white",
+          "friendly": "bg-warning text-dark",
+          "rest": "bg-danger text-white",
+          "tournament": "bg-success text-white"
+        }.get(cell.activity, "bg-light") %}
+
+        <td class="{{ color }}" style="padding: 2px; width: 20px; height: 20px;">
+          {% if cell.date %}
+            <a href="{{ url_for('practice', month=cell.month) }}"
+               style="display:block; width:100%; height:100%; text-decoration:none; color:inherit;">
+            </a>
+          {% endif %}
+        </td>
+      {% endfor %}
+    </tr>
     {% endfor %}
-  </tr>
-  {% endfor %}
   </tbody>
 </table>
+
 <div class="mt-4 text-center">
   <h5>Legend</h5>
   <div class="d-flex justify-content-center flex-wrap gap-2">

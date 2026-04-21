@@ -2,6 +2,7 @@
 {% block title %}Microcycle{% endblock %}
 {% block content %}
 <h2 class="text-center mb-4">Microcycle Weekly Plan</h2>
+<a href="{{ url_for('export_microcycle_pdf', week=selected_key) }}" class="btn btn-outline-secondary mb-3">Export PDF</a>
 
 <form method="get" class="mb-3 text-end">
   <label for="week" class="me-2">Load Saved Week:</label>

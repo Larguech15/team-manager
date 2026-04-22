@@ -13,7 +13,7 @@
   </style>
 </head>
 <body>
-  <h2>Matches List - Team {{ team }}</h2>
+  <h2>Matches List - {{ get_team_display_name(team) }}</h2>
   <div class="meta">Generated: {{ generated_at }}</div>
 
   <table>

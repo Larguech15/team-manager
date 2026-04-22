@@ -22,10 +22,11 @@
   <table>
     <thead>
       <tr>
-        <th>#</th>
-        <th>Player</th>
-        {% for day in range(1, days_in_month + 1) %}
-        <th>{{ day }}</th>
+        <th style="width: 30px;">#</th>
+        <th style="width: 200px; text-align:left;">Player</th>
+
+        {% for d in range(1, days+1) %}
+        <th style="width: 18px; font-size: 9px;">{{ d }}</th>
         {% endfor %}
       </tr>
     </thead>
@@ -33,12 +34,16 @@
       {% for num, player in players.items() %}
       <tr>
         <td>{{ num }}</td>
-        <td>{{ player.name }}</td>
+        <td style="width: 200px; text-align:left; white-space: nowrap; overflow: hidden;">
+          {{ player.name }}
+        </td>
         {% for day in range(1, days_in_month + 1) %}
           {% set key = selected_month ~ '-' ~ day %}
           {% set status = saved_attendance.get(num, {}).get(key, '') %}
           <td class="{% if status == 'P' %}present{% elif status == 'A' %}absent{% endif %}">
-            {{ status }}
+            <td style="width: 18px; padding:2px; text-align:center;">
+              {{ status }}
+            </td>
           </td>
         {% endfor %}
       </tr>

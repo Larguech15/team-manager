@@ -87,7 +87,7 @@
   </nav>
   {% if session.selected_team %}
     <div class="position-fixed bg-primary text-white px-3 py-1 rounded shadow" style="top: 60px; left: 20px; z-index: 999;">
-      Team {{ session.selected_team }}
+      {{ get_team_display_name(session.get('selected_team')) }}
     </div>
   {% endif %}
 

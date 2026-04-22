@@ -7,12 +7,42 @@
     body { font-family: Arial, sans-serif; font-size: 9px; }
     h2 { text-align: center; margin-bottom: 6px; }
     .meta { margin-bottom: 10px; font-size: 9px; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    th, td { border: 1px solid #aaa; padding: 4px; text-align: center; vertical-align: middle; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    th, td {
+      border: 1px solid #aaa;
+      padding: 4px;
+      text-align: center;
+      vertical-align: middle;
+      overflow: hidden;
+    }
+
     th { background: #e9ecef; }
     .present { background: #d4edda; }
     .absent { background: #f8d7da; }
     .stats { margin-top: 12px; }
+
+    .player-col {
+      width: 200px;
+      text-align: left;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .num-col {
+      width: 30px;
+    }
+
+    .day-col {
+      width: 18px;
+      font-size: 9px;
+      padding: 2px;
+    }
   </style>
 </head>
 <body>
@@ -22,28 +52,23 @@
   <table>
     <thead>
       <tr>
-        <th style="width: 30px;">#</th>
-        <th style="width: 200px; text-align:left;">Player</th>
-
-        {% for d in range(1, days+1) %}
-        <th style="width: 18px; font-size: 9px;">{{ d }}</th>
+        <th class="num-col">#</th>
+        <th class="player-col">Player</th>
+        {% for d in range(1, days_in_month + 1) %}
+        <th class="day-col">{{ d }}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for num, player in players.items() %}
       <tr>
-        <td>{{ num }}</td>
-        <td style="width: 200px; text-align:left; white-space: nowrap; overflow: hidden;">
-          {{ player.name }}
-        </td>
+        <td class="num-col">{{ num }}</td>
+        <td class="player-col">{{ player.name }}</td>
         {% for day in range(1, days_in_month + 1) %}
           {% set key = selected_month ~ '-' ~ day %}
           {% set status = saved_attendance.get(num, {}).get(key, '') %}
-          <td class="{% if status == 'P' %}present{% elif status == 'A' %}absent{% endif %}">
-            <td style="width: 18px; padding:2px; text-align:center;">
-              {{ status }}
-            </td>
+          <td class="day-col {% if status == 'P' %}present{% elif status == 'A' %}absent{% endif %}">
+            {{ status }}
           </td>
         {% endfor %}
       </tr>

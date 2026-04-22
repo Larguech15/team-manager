@@ -37,6 +37,16 @@ MIRCROCYCLE_FILE = 'microcycle.json'
 
 init_db()
 
+def get_team_display_name(team):
+    return {
+        "1": "First Team",
+        "2": "Second Team"
+    }.get(team, team)
+
+@app.context_processor
+def inject_team_name():
+    return dict(get_team_display_name=get_team_display_name)
+
 
 # ------------------ LEGACY JSON HELPERS (fallback/local only) ------------------
 

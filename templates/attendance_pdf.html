@@ -16,7 +16,7 @@
   </style>
 </head>
 <body>
-  <h2>Attendance - {{ selected_month }} - Team {{ team }}</h2>
+  <h2>Attendance - {{ selected_month }} - {{ get_team_display_name(team) }}</h2>
   <div class="meta">Generated: {{ generated_at }}</div>
 
   <table>

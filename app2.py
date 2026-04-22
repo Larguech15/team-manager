@@ -47,6 +47,17 @@ def get_team_display_name(team):
 def inject_team_name():
     return dict(get_team_display_name=get_team_display_name)
 
+@app.route('/switch_team')
+def switch_team():
+    current = session.get('selected_team')
+    if current == '1':
+        session['selected_team'] = '2'
+    elif current == '2':
+        session['selected_team'] = '1'
+    else:
+        session['selected_team'] = '1'
+    return redirect(request.referrer or url_for('team_dashboard'))
+
 
 # ------------------ LEGACY JSON HELPERS (fallback/local only) ------------------
 

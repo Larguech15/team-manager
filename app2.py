@@ -43,9 +43,25 @@ def get_team_display_name(team):
         "2": "Second Team"
     }.get(team, team)
 
+def format_date(date_str):
+    if not date_str:
+        return ""
+
+    try:
+        # Handles normal HTML date input format: YYYY-MM-DD
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d-%m-%Y")
+    except Exception:
+        return date_str
+
 @app.context_processor
 def inject_team_name():
     return dict(get_team_display_name=get_team_display_name)
+
+def inject_team_name():
+    return dict(
+        get_team_display_name=get_team_display_name,
+        format_date=format_date
+    )
 
 @app.route('/switch_team')
 def switch_team():

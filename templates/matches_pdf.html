@@ -32,7 +32,7 @@
       {% for match_id, match in matches.items() %}
       <tr>
         <td>{{ match_id }}</td>
-        <td>{{ match.date }}</td>
+        <td>{{ format_date(match.date) }}</td>
         <td>{{ match.time }}</td>
         <td>{{ match.opponent }}</td>
         <td>{{ match.venue }}</td>

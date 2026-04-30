@@ -8,7 +8,7 @@
 <body>
 <a href="/" class="btn btn-secondary mb-3">Back to Main Menu</a>
 <div class="container mt-5">
-    <h2>Edit Score for {{ match.opponent }} ({{ match.date }})</h2>
+    <h2>Edit Score for {{ match.opponent }} ({{ format_date(match.date) }})</h2>
     <form action="/edit_score/{{ match_id }}" method="post">
         <div class="mb-3">
             <label class="form-label">New Score</label>

@@ -4,71 +4,65 @@
 
 <style>
   .attendance-scroll {
-    overflow-x: auto;
+    overflow-x: visible;
     max-width: 100%;
-    border: 1px solid #dee2e6;
     background: white;
   }
 
   .attendance-table {
-    min-width: 2200px;
+    width: 100%;
     table-layout: fixed;
+    font-size: 11px;
   }
 
   .attendance-table th,
   .attendance-table td {
     vertical-align: middle;
     text-align: center;
+    padding: 2px;
+  }
+
+  .sticky-num,
+  .sticky-name {
+    position: static;
+    background: white;
   }
 
   .sticky-num {
-    position: sticky;
-    left: 0;
-    z-index: 3;
-    background: white;
-    width: 50px;
-    min-width: 50px;
+    width: 28px;
   }
 
   .sticky-name {
-    position: sticky;
-    left: 50px;
-    z-index: 3;
-    background: white;
-    width: 180px;
-    min-width: 180px;
+    width: 120px;
     text-align: left !important;
     font-weight: 600;
-  }
-
-  thead .sticky-num,
-  thead .sticky-name {
-    z-index: 5;
-    background: #f8f9fa;
+    word-break: break-word;
   }
 
   .day-cell {
-    width: 65px;
-    min-width: 65px;
+    width: 34px;
+    min-width: 34px;
   }
 
   .attendance-buttons {
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 1px;
     align-items: center;
   }
 
   .attendance-buttons label {
-    width: 45px;
-    padding: 2px 4px;
+    width: 30px;
+    padding: 1px 2px;
+    font-size: 10px;
+    line-height: 1.1;
   }
 
   .save-bar {
     position: sticky;
     bottom: 0;
     background: rgba(0, 0, 0, 0.8);
-    padding: 12px;
+    padding: 10px;
     z-index: 20;
     text-align: center;
     border-radius: 8px;

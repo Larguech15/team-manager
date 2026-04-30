@@ -53,14 +53,23 @@ def format_date(date_str):
     except Exception:
         return date_str
 
-@app.context_processor
-def inject_team_name():
-    return dict(get_team_display_name=get_team_display_name)
+def format_month(month_str):
+    if not month_str:
+        return ""
 
+    try:
+        year, month = month_str.split('-')
+        import calendar
+        return f"{calendar.month_name[int(month)]} {year}"
+    except:
+        return month_str
+
+@app.context_processor
 def inject_team_name():
     return dict(
         get_team_display_name=get_team_display_name,
-        format_date=format_date
+        format_date=format_date,
+        format_month=format_month
     )
 
 @app.route('/switch_team')

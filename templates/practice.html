@@ -81,11 +81,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
   <a href="{{ url_for('practice', month=prev_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
-    &larr; {{ prev_month }}
+    &larr; {{ format_month(prev_month) }}
   </a>
   <h4 class="mb-0">Schedule for {{ format_month(selected_month) }}</h4>
   <a href="{{ url_for('practice', month=next_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
-    {{ next_month }} &rarr;
+    {{ format_month(next_month) }} &rarr;
   </a>
 </div>
   

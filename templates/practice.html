@@ -83,7 +83,7 @@
   <a href="{{ url_for('practice', month=prev_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
     &larr; {{ prev_month }}
   </a>
-  <h4 class="mb-0">Schedule for {{ selected_month }}</h4>
+  <h4 class="mb-0">Schedule for {{ format_month(selected_month) }}</h4>
   <a href="{{ url_for('practice', month=next_month, filter=activity_filter if activity_filter else None) }}" class="btn btn-outline-secondary">
     {{ next_month }} &rarr;
   </a>

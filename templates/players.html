@@ -33,7 +33,7 @@
             <td>{{ player.height }}</td>
             <td>{{ player.weight }}</td>
             <td>{{ player.position }}</td>
-            <td>{{ player.dob }}</td>
+            <td>{{ format_date(player.dob) }}</td>
             <td>{{ player.comment }}</td>
             <td>
                 <a href="/edit_player/{{ num }}" class="btn btn-primary btn-sm">Edit</a>

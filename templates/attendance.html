@@ -117,16 +117,24 @@
           {% set val = saved_attendance.get(num, {}).get(key, '') %}
           <td class="day-cell">
             <div class="attendance-buttons">
-              <input class="btn-check" type="radio" name="p{{ num }}d{{ day }}" id="p{{ num }}d{{ day }}p" value="P" {% if val == 'P' %}checked{% endif %}>
+              <input type="hidden" name="p{{ num }}d{{ day }}" value="">
+
+              <input class="btn-check" type="radio"
+                     name="p{{ num }}d{{ day }}"
+                     id="p{{ num }}d{{ day }}p"
+                     value="P"
+                     {% if val == 'P' %}checked{% endif %}>
               <label class="btn btn-sm btn-outline-success" for="p{{ num }}d{{ day }}p">P</label>
 
-              <input class="btn-check" type="radio" name="p{{ num }}d{{ day }}" id="p{{ num }}d{{ day }}a" value="A" {% if val == 'A' %}checked{% endif %}>
+              <input class="btn-check" type="radio"
+                     name="p{{ num }}d{{ day }}"
+                     id="p{{ num }}d{{ day }}a"
+                     value="A"
+                     {% if val == 'A' %}checked{% endif %}>
               <label class="btn btn-sm btn-outline-danger" for="p{{ num }}d{{ day }}a">A</label>
-
-              <input class="btn-check" type="radio" name="p{{ num }}d{{ day }}" id="p{{ num }}d{{ day }}x" value="" {% if val not in ['P', 'A'] %}checked{% endif %}>
-              <label class="btn btn-sm btn-outline-secondary" for="p{{ num }}d{{ day }}x">N/A</label>
             </div>
           </td>
+          
           {% endfor %}
         </tr>
         {% endfor %}

@@ -845,7 +845,8 @@ def attendance():
         for num in players:
             for day in range(1, days_in_month + 1):
                 key = f"p{num}d{day}"
-                val = request.form.get(key)
+                values = request.form.getlist(key)
+                val = next((v for v in reversed(values) if v in {"P", "A"}), "")
                 if val in {"P", "A"}:
                     new_data.setdefault(num, {})[f"{selected_month}-{day}"] = val
 
@@ -918,7 +919,8 @@ def monthly_attendance():
         for num in players:
             for day in range(1, days_in_month + 1):
                 key = f"p{num}d{day}"
-                status = request.form.get(key)
+                values = request.form.getlist(key)
+                status = next((v for v in reversed(values) if v in {"P", "A"}), "")
                 if status in {"P", "A"}:
                     attendance_data.setdefault(num, {})[f"{month}-{day}"] = status
 

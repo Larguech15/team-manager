@@ -3,6 +3,7 @@
 {% block content %}
 <h2>Edit Player #{{ num }}</h2>
 <form method="post" enctype="multipart/form-data">
+    <div class="mb-3"><label>Number</label><input class="form-control" name="num" value="{{ num }}"></div>    
     <div class="mb-3"><label>Full Name</label><input class="form-control" name="name" value="{{ player.name }}"></div>
     <div class="mb-3"><label>Height</label><input class="form-control" name="height" value="{{ player.height }}"></div>
     <div class="mb-3"><label>Weight</label><input class="form-control" name="weight" value="{{ player.weight }}"></div>

@@ -72,6 +72,16 @@ def inject_team_name():
         format_month=format_month
     )
 
+@app.route("/debug/attendance_months")
+def debug_attendance_months():
+    rows = db_select(
+        "SELECT team, month_label, COUNT(*) AS count FROM attendance_monthly GROUP BY team, month_label ORDER BY team, month_label",
+        "SELECT team, month_label, COUNT(*) AS count FROM attendance_monthly GROUP BY team, month_label ORDER BY team, month_label"
+    )
+    return {
+        "current_team": session.get("selected_team"),
+        "rows": rows
+    }
 @app.route('/switch_team')
 def switch_team():
     current = session.get('selected_team')
@@ -824,6 +834,7 @@ def attendance():
         return no_team
 
     players = get_players()
+    
     available_months = get_available_month_labels()
 
     selected_month = request.values.get("month", "").strip()
@@ -832,6 +843,7 @@ def attendance():
             selected_month = available_months[0] 
         else:
             selected_month = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%B %Y")
+            available_months = [selected_month]
 
     month_key = f"monthly:{selected_month}"
     edit_mode = request.args.get("edit") == "1"

@@ -828,7 +828,10 @@ def attendance():
 
     selected_month = request.values.get("month", "").strip()
     if not selected_month:
-        selected_month = available_months[0] if available_months else datetime.now(ZoneInfo("Asia/Dubai")).strftime(%B %Y")
+        if available_months:
+            selected_month = available_months[0] 
+        else:
+            selected_month = datetime.now(ZoneInfo("Asia/Dubai")).strftime(%B %Y")
 
     month_key = f"monthly:{selected_month}"
     edit_mode = request.args.get("edit") == "1"

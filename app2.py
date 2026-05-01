@@ -597,15 +597,16 @@ def edit_player(num):
         db_execute(
             """
             UPDATE players
-            SET name = %s, height = %s, weight = %s, position = %s, dob = %s, comment = %s, photo = %s
+            SET number = %s, name = %s, height = %s, weight = %s, position = %s, dob = %s, comment = %s, photo = %s
             WHERE team = %s AND number = %s
             """,
             """
             UPDATE players
-            SET name = ?, height = ?, weight = ?, position = ?, dob = ?, comment = ?, photo = ?
+            SET number = %s, name = ?, height = ?, weight = ?, position = ?, dob = ?, comment = ?, photo = ?
             WHERE team = ? AND number = ?
             """,
             (
+                request.form.get('num', '').strip(),
                 request.form['name'].strip(),
                 request.form.get('height', '').strip(),
                 request.form.get('weight', '').strip(),

@@ -835,15 +835,24 @@ def attendance():
 
     players = get_players()
     
-    available_months = get_available_month_labels()
+    available_months = [
+        "April 2026",
+        "May 2026",
+        "June 2026",
+        "July 2026",
+        "August 2026"
+    ]
+
+    saved_months = get_available_month_labels()
+
+    for m in saved_months:
+        if m not in available_months:
+            available_months.append(m)
 
     selected_month = request.values.get("month", "").strip()
+
     if not selected_month:
-        if available_months:
-            selected_month = available_months[0] 
-        else:
-            selected_month = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%B %Y")
-            available_months = [selected_month]
+        selected_month = available_months[0]
 
     month_key = f"monthly:{selected_month}"
     edit_mode = request.args.get("edit") == "1"

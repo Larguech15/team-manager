@@ -1254,6 +1254,7 @@ def export_practice_pdf(month):
     schedule = get_practice_month(month)
 
     year, m = map(int, month.split("-"))
+    display_month = f"{calendar.month_name[m]} {year}"
     total_days = monthrange(year, m)[1]
     first_day = datetime(year, m, 1)
 
@@ -1289,6 +1290,7 @@ def export_practice_pdf(month):
         "practice_pdf.html",
         month=month,
         month_name=month_name,
+        display_month=display_month,
         week_days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         calendar_grid=calendar_grid,
         schedule=schedule,

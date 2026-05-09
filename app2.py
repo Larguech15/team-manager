@@ -1259,7 +1259,7 @@ def export_practice_pdf(month):
     calendar_grid = []
     week = [None, None, None, None, None, None, None]
 
-    start index = first_day.weekday()
+    start_index = first_day.weekday()
     
     for day in range(1, total_days + 1):
         date_str = f"{month}-{day:02d}"

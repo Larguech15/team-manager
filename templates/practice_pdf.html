@@ -28,6 +28,8 @@
             padding: 6px;
             font-size: 12px;
             height: 40px;
+            text-align: center;
+            vertical-align: middle;
         }
 
         td {
@@ -86,7 +88,10 @@
 
 <body>
 
-<h2>Practice Calendar – {{ month }}</h2>
+<h2>
+    Practice Calendar – 
+    {{ month.split('-')[1]|int|month_name }} {{ month.split('-')[0] }}
+</h2>
 
 <table>
     <thead>

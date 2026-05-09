@@ -696,6 +696,9 @@ def add_match():
     if request.method == 'POST':
         team = get_team()
 
+        existing = get_matches()
+        match_id = str(len(existing) +1)
+
         db_execute(
             """
             INSERT INTO matches (team, match_id, opponent, date, time, venue, competition, score)
@@ -707,7 +710,7 @@ def add_match():
             """,
             (
                 team,
-                request.form['match_id'].strip(),
+                match_id,
                 request.form['opponent'].strip(),
                 request.form['date'],
                 request.form['time'],

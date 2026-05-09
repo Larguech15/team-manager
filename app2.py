@@ -1256,21 +1256,17 @@ def export_practice_pdf(month):
     total_days = monthrange(year, m)[1]
     first_day = datetime(year, m, 1)
 
+    cal = calendar.Calendar(firstweekday=0)
     calendar_grid = []
-    week = [None, None, None, None, None, None, None]
 
-    start_index = first_day.weekday()
-    
-    for day in range(1, total_days + 1):
-        date_str = f"{month}-{day:02d}"
-        index = (start_index + day - 1) % 7
-        week[index] = date_str
-        
-        if index == 6:
-            calendar_grid.append(week)
-            week = [None, None, None, None, None, None, None]
-    if any(week):
-        calendar_grid.append(week)
+    for week in cal.monthdatescalendar(year, m):
+        row = []
+        for date_obj in week:
+            if date_obj.month == m:
+                row.append(date_obj.strftime("%Y-%m-%d"))
+            else:
+                row.append(None)
+        calendar_grid.append(row)
 
     summary = {key: 0 for key in ['GYM', 'VOLLEYBALL', 'FRIENDLY MATCH', 'REST', 'TOURNAMENT']}
     for entry in schedule.values():

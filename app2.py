@@ -857,9 +857,9 @@ def attendance():
 
     current_month_date = datetime.strptime(selected_month, "%B %Y")
 
-    prev_month = (current_month_date - relativedelta(months=1)).strftime(%B %Y")
+    prev_month = (current_month_date - relativedelta(months=1)).strftime("%B %Y")
 
-    next_month = (current_month_date + relativedelta(months=1)).strftime(%B %Y")
+    next_month = (current_month_date + relativedelta(months=1)).strftime("%B %Y")
     
     month_key = f"monthly:{selected_month}"
     edit_mode = request.args.get("edit") == "1"

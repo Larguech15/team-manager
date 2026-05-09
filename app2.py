@@ -853,8 +853,14 @@ def attendance():
     selected_month = request.values.get("month", "").strip()
 
     if not selected_month:
-        selected_month = available_months[0]
+        selected_month = datetime.now(ZoneInfo("Asia/Dubai")).strftime("%B %Y")
 
+    current_month_date = datetime.strptime(selected_month, "%B %Y")
+
+    prev_month = (current_month_date - relativedelta(months=1)).strftime(%B %Y")
+
+    next_month = (current_month_date + relativedelta(months=1)).strftime(%B %Y")
+    
     month_key = f"monthly:{selected_month}"
     edit_mode = request.args.get("edit") == "1"
 
@@ -909,6 +915,8 @@ def attendance():
         "attendance.html",
         players=players,
         selected_month=selected_month,
+        prev_month=prev_month,
+        next_month=next_month,
         saved_attendance=saved_attendance,
         edit_mode=edit_mode,
         stats=stats,

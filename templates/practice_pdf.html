@@ -90,26 +90,24 @@
     {% for week in calendar_grid %}
     <tr>
       {% for day in week %}
-        {% set entry = schedule.get(day, {"main": "", "secondary": ""}) %}
         <td>
           {% if day %}
-            <span class="day-number">{{ day.split('-')[-1] }}</span>
-            {% set entry = schedule.get(day, {"main": "", "secondary": ""}) %}
+            <div class="day-number">{{ day.split('-')[-1] }}</div>
+          
+            {% set entry = schedule.get(day, {}) %}
+          
             {% if entry.main %}
-              <div class="badge {{ entry.main.split()[0] }}">{{ entry.main }} (.)</div>
-              {% if entry.note_main_start and entry.note_main_end %}
-                <div style="font-size: 10px; color: #555; text-align: center;"><em>{{ entry.note_main_start }} to {{ entry.note_main_end }}</em></div>
-              {% endif %}
+              <div class="activity main">{{ entry.main }} (.)</div>div>
             {% endif %}
-
-            {% if main and secondary %}
-              <hr style="margin: 2px 0;">
+              {% if entry.note_main_start or entry.note_main_end %}
+                <div sclass="time">{{ entry.note_main_start }} to {{ entry.note_main_end }}</div>
             {% endif %}
 
             {% if entry.secondary %}
-              <div class="badge {{ entry.secondary.split()[0] }}">{{ entry.secondary }} (.)</div>
-              {% if entry.note_secondary_start and entry.note_secondary_end %}
-                <div style="font-size: 10px; color: #555; text-align: center;"><em>{{ entry.note_secondary_start }} to {{ entry.note_secondary_end }}</em></div>
+              <div class="activity secondary">{{ entry.secondary }} (.)</div>
+            {% endif %} 
+            {% if entry.note_secondary_start or entry.note_secondary_end %}
+              <div sclass="time">{{ entry.note_secondary_start }} to {{ entry.note_secondary_end }}</div>
               {% endif %}
             {% endif %}
           </td>

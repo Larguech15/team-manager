@@ -94,6 +94,7 @@
         <td>
           {% if day %}
             <span class="day-number">{{ day.split('-')[-1] }}</span>
+            {% set entry = schedule.get(day, {"main": "", "secondary": ""}) %}
             {% if entry.main %}
               <div class="badge {{ entry.main.split()[0] }}">{{ entry.main }} (.)</div>
               {% if entry.note_main_start and entry.note_main_end %}

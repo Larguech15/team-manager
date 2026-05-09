@@ -1288,6 +1288,7 @@ def export_practice_pdf(month):
     html = render_template(
         "practice_pdf.html",
         month=month,
+        month_name=month_name,
         week_days=["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
         calendar_grid=calendar_grid,
         schedule=schedule,
